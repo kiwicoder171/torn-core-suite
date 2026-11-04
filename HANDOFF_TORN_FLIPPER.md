@@ -1,3 +1,5 @@
+> 🧠 **Obsidian Hub**: [[_Brain/Projects/Torn|Torn]] · [[Antigravity/Torn/CONTEXT|Torn/CONTEXT.md]]
+
 # Project Handoff: TornFlipper (Market Deal Scanner & Webhook Notifier)
 
 ## 1. Project Overview & Vision

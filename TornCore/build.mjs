@@ -102,6 +102,12 @@ ${bundledBody.join('\n').split('\n').map(l => '  ' + l).join('\n')}
   const stats = fs.statSync(OUTPUT_FILE);
   console.log(`[TornCore Build] Success! Output size: ${(stats.size / 1024).toFixed(2)} KB -> ${OUTPUT_FILE}`);
 
+  // Mirror to root dist/ if present so GitHub raw links from forum posts never break
+  const ROOT_DIST = '../dist';
+  if (fs.existsSync(ROOT_DIST)) {
+    fs.writeFileSync(path.join(ROOT_DIST, 'TornCore.user.js'), outputContent, 'utf8');
+  }
+
   // Also generate Tampermonkey-compatible import JSON
   const JSON_OUTPUT_FILE = path.join(DIST_DIR, 'tampermonkey-backup.json');
   const backupPayload = {

@@ -92,18 +92,37 @@ function renderTravelAgencyProfits() {
     </div>
   `;
 
-  // Search for the "Travel Agency" title element to inject immediately underneath
-  const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1');
-  for (const h of headings) {
-    if (/travel\s*agency/i.test(h.textContent || '')) {
-      h.parentNode.insertBefore(card, h.nextSibling);
+  // 1. Anchor right before "Select Destination and Traveling Method"
+  const selectDestHeader = Array.from(document.querySelectorAll('div, h4, h3, p, span')).find(el =>
+    /Select Destination/i.test(el.textContent || '') && el.children.length <= 2
+  );
+  if (selectDestHeader && selectDestHeader.parentElement) {
+    selectDestHeader.parentElement.insertBefore(card, selectDestHeader);
+    return;
+  }
+
+  // 2. Anchor relative to the inventory search bar
+  const searchInput = document.querySelector('input[placeholder*="inventory" i]');
+  if (searchInput) {
+    const searchRow = searchInput.closest('form, div, [class*="search" i]') || searchInput;
+    if (searchRow && searchRow.parentElement) {
+      searchRow.parentElement.insertBefore(card, searchRow);
       return;
     }
   }
 
-  // Fallback container selectors
+  // 3. Search for heading with "Travel Agency"
+  const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1, [class*="title" i]');
+  for (const h of headings) {
+    if (/travel\s*agency/i.test(h.textContent || '') && h.children.length <= 2 && h.parentElement) {
+      h.parentElement.insertBefore(card, h.nextSibling);
+      return;
+    }
+  }
+
+  // 4. Fallback container selectors
   const fallbackContainer = document.querySelector(
-    '.travel-agency, [class*="travel" i], .content, #mainContainer, .stage'
+    '.travel-agency, [class*="travel" i], .content-wrapper, .content, #mainContainer, .stage'
   );
   if (fallbackContainer) {
     fallbackContainer.prepend(card);

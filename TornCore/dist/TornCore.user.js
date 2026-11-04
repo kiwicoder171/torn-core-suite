@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.2
+// @version      1.1.0
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -659,26 +659,30 @@
   function initVaultHelper() {
     const inputs = new Set();
   
-    // 1. Direct attribute matching for deposit inputs
-    document.querySelectorAll(
-      'input[name="deposit"], input[name="money"], input[name="amount"], input[id*="deposit" i], input[placeholder*="deposit" i]'
-    ).forEach((el) => {
-      const parent = el.closest('form, .deposit-box, .tab-deposit, [class*="deposit" i], .cont-gray, .armory-deposit, .content');
-      if (parent && (/deposit/i.test(parent.textContent || '') || /deposit/i.test(el.name) || /deposit/i.test(el.id))) {
-        inputs.add(el);
-      }
-    });
+    // 1. Faction Armory: specifically target the "DEPOSIT MONEY" button and its input
+    const allButtons = Array.from(document.querySelectorAll('input[type="submit"], button, .btn'));
+    const depositMoneyBtn = allButtons.find(b =>
+      /DEPOSIT\s+MONEY/i.test(b.value || b.textContent || '')
+    );
   
-    // 2. Find inputs positioned near a "DEPOSIT" button (Faction Armory & Property Vault)
+    if (depositMoneyBtn) {
+      const parentContainer = depositMoneyBtn.closest('form, div, span');
+      if (parentContainer) {
+        const cashInput = parentContainer.querySelector('input[type="text"], input[type="number"]');
+        if (cashInput) inputs.add(cashInput);
+      }
+    }
+  
+    // 2. Property Vault: target property vault deposit inputs (excluding item tables)
     document.querySelectorAll(
-      'input[type="submit"][value*="DEPOSIT" i], button[value*="DEPOSIT" i], .btn[value*="DEPOSIT" i], input[value*="DEPOSIT MONEY" i]'
-    ).forEach((btn) => {
-      const container = btn.closest('form, div, tr, td');
-      if (container) {
-        const textInput = container.querySelector(
-          'input[type="text"], input[type="number"], input:not([type="submit"]):not([type="hidden"]):not([type="button"])'
-        );
-        if (textInput) inputs.add(textInput);
+      'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
+    ).forEach((el) => {
+      // Explicitly exclude any item list rows or armory weapon/armor/med tables
+      if (el.closest('tr, .item-list, [class*="items" i], [data-item]')) return;
+  
+      const parent = el.closest('form, .deposit-box, [class*="deposit" i], .cont-gray');
+      if (parent) {
+        inputs.add(el);
       }
     });
   
@@ -686,10 +690,12 @@
       // Avoid double injection
       if (input.parentElement && input.parentElement.querySelector('.torncore-vault-chips')) return;
       if (input.previousElementSibling && input.previousElementSibling.classList.contains('torncore-vault-chips')) return;
+      if (input.closest('.torncore-chip-container')) return;
   
       const settings = loadSettings();
       const chipsContainer = document.createElement('div');
       chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
+      chipsContainer.style.marginBottom = '6px';
   
       // Standard increment chips
       settings.vaultChips.forEach((amount) => {
@@ -735,8 +741,13 @@
       };
       chipsContainer.appendChild(keepChip);
   
-      // Insert directly before input or container
-      input.parentNode.insertBefore(chipsContainer, input);
+      // Insert directly before the cash input element or its container row
+      const targetRow = input.closest('form, div') || input;
+      if (targetRow && targetRow !== input && targetRow.parentElement) {
+        targetRow.parentElement.insertBefore(chipsContainer, targetRow);
+      } else {
+        input.parentNode.insertBefore(chipsContainer, input);
+      }
     });
   }
   
@@ -913,18 +924,37 @@
       </div>
     `;
   
-    // Search for the "Travel Agency" title element to inject immediately underneath
-    const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1');
-    for (const h of headings) {
-      if (/travel\s*agency/i.test(h.textContent || '')) {
-        h.parentNode.insertBefore(card, h.nextSibling);
+    // 1. Anchor right before "Select Destination and Traveling Method"
+    const selectDestHeader = Array.from(document.querySelectorAll('div, h4, h3, p, span')).find(el =>
+      /Select Destination/i.test(el.textContent || '') && el.children.length <= 2
+    );
+    if (selectDestHeader && selectDestHeader.parentElement) {
+      selectDestHeader.parentElement.insertBefore(card, selectDestHeader);
+      return;
+    }
+  
+    // 2. Anchor relative to the inventory search bar
+    const searchInput = document.querySelector('input[placeholder*="inventory" i]');
+    if (searchInput) {
+      const searchRow = searchInput.closest('form, div, [class*="search" i]') || searchInput;
+      if (searchRow && searchRow.parentElement) {
+        searchRow.parentElement.insertBefore(card, searchRow);
         return;
       }
     }
   
-    // Fallback container selectors
+    // 3. Search for heading with "Travel Agency"
+    const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1, [class*="title" i]');
+    for (const h of headings) {
+      if (/travel\s*agency/i.test(h.textContent || '') && h.children.length <= 2 && h.parentElement) {
+        h.parentElement.insertBefore(card, h.nextSibling);
+        return;
+      }
+    }
+  
+    // 4. Fallback container selectors
     const fallbackContainer = document.querySelector(
-      '.travel-agency, [class*="travel" i], .content, #mainContainer, .stage'
+      '.travel-agency, [class*="travel" i], .content-wrapper, .content, #mainContainer, .stage'
     );
     if (fallbackContainer) {
       fallbackContainer.prepend(card);
@@ -1380,13 +1410,40 @@
     return { current: 0, max: 0, isOvercapped: false };
   }
   
+  function findSidebarHappyRow() {
+    // 1. Classic ID/Class fallback
+    const classic = document.querySelector('#barHappy, .bar-happy, [data-happy]');
+    if (classic) return classic.closest('li, div') || classic;
+  
+    // 2. Modern Torn React sidebar: search within sidebar container for text "Happy"
+    const sidebar = document.querySelector('#sidebarroot, #sidebar, [class*="sidebar" i], body');
+    if (!sidebar) return null;
+  
+    const elements = sidebar.querySelectorAll('div, span, p, a, li');
+    for (const el of elements) {
+      const txt = el.textContent?.trim() || '';
+      // Look for exact leaf label "Happy:" or compact row "Happy: 4243/4275"
+      if (el.children.length === 0 && /^Happy:?$/i.test(txt)) {
+        return el.parentElement;
+      }
+      if (/^Happy:\s*[0-9,]+/i.test(txt) && el.children.length <= 4) {
+        return el;
+      }
+    }
+  
+    return null;
+  }
+  
   function initGymTimer() {
     // Run on all pages: inject into sidebar Happy row
     renderSidebarHappyPill();
+    setTimeout(renderSidebarHappyPill, 400);
+    setTimeout(renderSidebarHappyPill, 1200);
   
     // If on gym page, also render full detailed card
     if (window.location.href.includes('gym.php')) {
       renderGymTimerCard();
+      setTimeout(renderGymTimerCard, 400);
     }
   
     if (!timerInterval) {
@@ -1395,10 +1452,10 @@
   }
   
   function renderSidebarHappyPill() {
-    const happyRow = document.querySelector('#barHappy, .bar-happy, [class*="happyRow"], [class*="bar-happy"]')?.closest('li, div, [class*="row"]');
-    if (!happyRow) return;
-  
     if (document.getElementById('torncore-happy-sidebar-pill')) return;
+  
+    const happyRow = findSidebarHappyRow();
+    if (!happyRow) return;
   
     const pill = document.createElement('span');
     pill.id = 'torncore-happy-sidebar-pill';

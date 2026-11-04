@@ -1,0 +1,17 @@
+{
+  "api_key": "YOUR_TORN_API_KEY_HERE",
+  "rate_limit_calls_per_minute": 75,
+  "discord_webhook_url": "https://discord.com/api/webhooks/...",
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
+  "poll_intervals": {
+    "tier_1_seconds": 5.0,
+    "tier_2_seconds": 25.0,
+    "tier_3_seconds": 60.0
+  },
+  "default_min_profit": 100000,
+  "default_min_discount_pct": 3.0,
+  "enable_mug_risk_warning": true,
+  "filter_single_unit_baits": false,
+  "cache_ttl_minutes": 30
+}

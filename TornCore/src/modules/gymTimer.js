@@ -38,13 +38,40 @@ export function getHappyStats() {
   return { current: 0, max: 0, isOvercapped: false };
 }
 
+function findSidebarHappyRow() {
+  // 1. Classic ID/Class fallback
+  const classic = document.querySelector('#barHappy, .bar-happy, [data-happy]');
+  if (classic) return classic.closest('li, div') || classic;
+
+  // 2. Modern Torn React sidebar: search within sidebar container for text "Happy"
+  const sidebar = document.querySelector('#sidebarroot, #sidebar, [class*="sidebar" i], body');
+  if (!sidebar) return null;
+
+  const elements = sidebar.querySelectorAll('div, span, p, a, li');
+  for (const el of elements) {
+    const txt = el.textContent?.trim() || '';
+    // Look for exact leaf label "Happy:" or compact row "Happy: 4243/4275"
+    if (el.children.length === 0 && /^Happy:?$/i.test(txt)) {
+      return el.parentElement;
+    }
+    if (/^Happy:\s*[0-9,]+/i.test(txt) && el.children.length <= 4) {
+      return el;
+    }
+  }
+
+  return null;
+}
+
 export function initGymTimer() {
   // Run on all pages: inject into sidebar Happy row
   renderSidebarHappyPill();
+  setTimeout(renderSidebarHappyPill, 400);
+  setTimeout(renderSidebarHappyPill, 1200);
 
   // If on gym page, also render full detailed card
   if (window.location.href.includes('gym.php')) {
     renderGymTimerCard();
+    setTimeout(renderGymTimerCard, 400);
   }
 
   if (!timerInterval) {
@@ -53,10 +80,10 @@ export function initGymTimer() {
 }
 
 function renderSidebarHappyPill() {
-  const happyRow = document.querySelector('#barHappy, .bar-happy, [class*="happyRow"], [class*="bar-happy"]')?.closest('li, div, [class*="row"]');
-  if (!happyRow) return;
-
   if (document.getElementById('torncore-happy-sidebar-pill')) return;
+
+  const happyRow = findSidebarHappyRow();
+  if (!happyRow) return;
 
   const pill = document.createElement('span');
   pill.id = 'torncore-happy-sidebar-pill';

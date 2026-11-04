@@ -18,3 +18,15 @@ Part of [[_Brain/00-Master-Orchestrator-MOC|00-Master-Orchestrator-MOC]] · Hub 
 - 2026-11-04: Pushed repository to GitHub (`kiwicoder171/torn-core-suite`), published v1.0.1 with in-modal privacy guarantee.
 - 2026-11-04: Published thread on Torn Forums (*Tools & Userscripts*).
 - 2026-11-05: Re-organized repository into modular subfolders (`TornCore/` for userscript, prepared for `TornFlipper/`). Maintained root `dist/` mirror so live forum links remain operational.
+
+
+## 4. TornFlipper Backlog & Implementation Tickets
+- [x] **TF-01**: Finalized architecture specification and guardrails in `TornFlipper/README.md`.
+- [x] **TF-02**: Configuration templates & categorized item whitelist (`config.example.json`, `items.json`).
+- [x] **TF-03**: Sliding-window token-bucket rate limiter enforcing $\le 80$ calls/min (`rate_limiter.py`).
+- [x] **TF-04**: Async Torn API v1/v2 client with backoff and error recovery (`api_client.py`).
+- [x] **TF-05**: Dual-anchor pricing engine & mugger trap heuristics (`analyzer.py`).
+- [x] **TF-06**: In-memory alert deduplication cache with TTL (`cache.py`).
+- [x] **TF-07**: Multi-platform webhook notifier with origin-aware direct buy links (`notifier.py`).
+- [x] **TF-08**: Async multi-tier poller loop with graceful shutdown (`flipper.py`).
+- [x] **TF-09**: Comprehensive unit tests covering rate limiter, analyzer, cache, and notifier (`tests/` — 13 passing).

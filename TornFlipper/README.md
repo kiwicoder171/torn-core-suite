@@ -1,70 +1,75 @@
 > 🧠 **Obsidian Hub**: [[_Brain/Projects/Torn|Torn]] · [[Antigravity/Torn/CONTEXT|Torn/CONTEXT.md]]
 
-# Project Handoff: TornFlipper (Market Deal Scanner & Webhook Notifier)
+# TornFlipper: High-Frequency Market Scanner & Webhook Notifier
 
 ## 1. Project Overview & Vision
 * **Tool Name**: `TornFlipper`
-* **Purpose**: A standalone, 24/7 background service (Python or Node.js) that monitors high-liquidity item markets in [Torn.com](https://www.torn.com) via the official Torn API, identifies underpriced items suitable for flipping, and instantly dispatches rich webhook notifications (Discord / Telegram) with direct bazaar buy links.
-* **Execution Boundary**: Must be a **separate standalone tool** (outside the browser userscript) to avoid exhausting in-browser API quotas and to comply strictly with Torn’s active-page rules.
+* **Purpose**: A standalone 24/7 background service in Python that continuously monitors high-liquidity item markets in [Torn.com](https://www.torn.com) via the official Torn API, identifies underpriced flipping opportunities using dual-anchor pricing, and instantly dispatches rich webhook alerts (Discord / Telegram) with direct 1-click buy links.
+* **Execution Boundary**: Runs strictly outside the browser userscript to conserve active-play API quotas, prevent tab throttling, and operate as an autonomous daemon/service.
 
 ---
 
 ## 2. Strict Torn Rule Guardrails (Ban Prevention)
-* **Zero Automation**: TornFlipper **NEVER** executes buy actions automatically. It only detects deals and sends notifications. The human player clicks the link and manually presses "Buy" in their browser.
-* **Official API Only**: All market queries route strictly through `https://api.torn.com/market/<itemID>?selections=bazaar,itemmarket`. Zero HTML page scraping.
-* **Rate-Limit Enforcement**: Torn enforces a hard ceiling of 100 API calls/minute. TornFlipper must include an internal queue capped conservatively at **60–80 calls/minute** with variable polling intervals.
-* **No Unfocused Browser Loops**: Operates entirely as a headless CLI/daemon script on the user's machine or cloud worker, not inside a hidden browser tab.
+* **Zero Automation / No Auto-Buy**: TornFlipper **NEVER** executes purchase transactions. It is an alerting tool only. The human player clicks the link and manually presses "Buy" in their browser.
+* **Official API Only**: All market queries route strictly through `https://api.torn.com/market/<itemID>?selections=bazaar,itemmarket&key=<API_KEY>`. Zero HTML scraping or unauthorized browser automation.
+* **Rate-Limit Cushion**: Hard rate limit of 100 requests/minute is protected by a token-bucket sliding-window rate limiter locked at **80 calls/minute** max (default: 60-75 calls/min).
 
 ---
 
-## 3. Market Pricing & Deal Detection Algorithm
+## 3. Market Pricing & Detection Heuristics
 
-### A. High-Liquidity Item Whitelist
-To protect against market-manipulated junk items and low-volume traps, the scanner targets **only high-velocity goods**:
-* **Drugs**: Xanax, Vicodin, Ecstasy
-* **Energy Drinks**: Cans of Munster, Red Cow, Taurine Elite, Rockstar, X-MASS
-* **Medical**: Feathery Hotel Coupons (FHC), Medical Packs, Blood Bags
-* **Sets**: 11 Travel Plushies & 8 Exotic Flowers
-* **Currency**: Points, Donator Packs
+### A. Prioritized Whitelist & Tiered Polling
+To avoid ghost alerts on fast-moving deals, polling frequency is tiered:
+* **Tier 1 (High Velocity — every 4–6s)**:
+  * Xanax (ID 206), Feathery Hotel Coupon (ID 366), Donator Pack (ID 283), Points Market.
+  * Captures ultra-liquid deals within the 5–15 second window before bazaar campers sweep them.
+* **Tier 2 (Medium Velocity — every 20–30s)**:
+  * Energy Cans (Munster ID 532, Red Cow ID 533, Taurine Elite ID 534, Rockstar ID 535, X-MASS ID 554), First Aid Kits / Small First Aid, Medical Blood Bags.
+* **Tier 3 (Batch Rotation — every 60–90s)**:
+  * 11 Travel Plushies (Camel, Chamois, Jaguar, Lion, Monkey, Nessie, Panda, Red Fox, Stingray, Wolverine, Peep) & 8 Exotic Flowers.
 
-### B. "Valid Market Price" Calculation (Outlier-Proof)
-1. Query active bazaar listings for a whitelisted item.
-2. Filter out single-item bait listings (e.g. quantity = 1 at 50% discount used by muggers).
-3. Compute the **Median Price** of the top 3–5 lowest active bazaar listings.
-4. **Deal Trigger Condition**:
-   $$\text{Price} \le \text{Median} \times (1 - \text{DiscountThreshold})$$
-   *(Default: $\ge 3\%$ below market median AND potential total profit $\ge \$100,000$)*.
+### B. Dual-Anchor Pricing (Outlier & Anti-Manipulation)
+A listing is flagged as a deal **only if** both criteria are met:
+1. **Bazaar Median Anchor**: Listing price $\le \text{Median of top 3–5 active listings} \times (1 - \text{DiscountThreshold})$.
+2. **Global Baseline Anchor**: Listing price $\le \text{Item Baseline Market Value} \times (1 - \text{DiscountThreshold})$.
+   *(Prevents being tricked by seller flash manipulation where all top listings are fake).*
+
+### C. Mugger Trap Heuristics
+* If a listing has `quantity <= 3` and `discount >= 5%`, tag the alert with:
+  `⚠️ HIGH MUG RISK — Check seller hospital/overseas status before buying!`
+* Filter out single-unit non-profitable baits if configured.
+
+### D. Alert Deduplication Cache
+* LRU cache tracking `(item_id, seller_id, price)` with a 30-minute expiration window.
+* Re-alerts only if the seller further reduces the price or if a previously seen listing reappears after being delisted.
 
 ---
 
-## 4. Architecture Blueprint
+## 4. Origin-Aware One-Click Buy Links
+* **Bazaar Listings**:
+  `https://www.torn.com/bazaar.php?userId=<sellerID>`
+* **Item Market Listings**:
+  `https://www.torn.com/imarket.php#/p=shop&step=shop&type=&searchitem=<itemID>`
+
+---
+
+## 5. System Architecture Blueprint
 
 ```text
-torn-flipper/
-├── config.json          // API key, Discord Webhook URL, min profit ($), poll interval
-├── items.json           // Whitelist of target item IDs, names, and buy ceilings
-├── flipper.py           // Core async poller + sliding-window rate limiter (≤80 calls/min)
-├── analyzer.py          // Median price calculator + outlier/scam detection filter
-├── notifier.py          // Formats and sends Discord Webhook embeds
-├── requirements.txt     // requests / aiohttp
-└── README.md            // Setup and usage guide
+TornFlipper/
+├── config.example.json   # Configuration template (API key, webhooks, thresholds)
+├── items.json            # Whitelisted item IDs categorized by polling tier
+├── rate_limiter.py       # Sliding-window token bucket rate limiter (<= 80 req/min)
+├── api_client.py         # Async Torn API client with error handling & backoff
+├── analyzer.py           # Dual-anchor discount engine & mugger risk detection
+├── cache.py              # In-memory alert deduplication with TTL
+├── notifier.py           # Formats and sends Discord Webhook embeds
+├── flipper.py            # Main async scheduler and orchestrator
+├── tests/                # Comprehensive unit tests
+│   ├── test_rate_limiter.py
+│   ├── test_analyzer.py
+│   ├── test_cache.py
+│   └── test_notifier.py
+├── requirements.txt      # aiohttp
+└── README.md
 ```
-
-### Discord Notification Embed Example:
-```text
-🔔 DEAL DETECTED: Xanax
-🏷 Price: $812,000 (Market Median: $838,000)
-💰 Profit per unit: $26,000 (3.1% margin)
-📦 Quantity: 40 units | Total Potential Profit: $1,040,000
-👤 Seller: Heisenberg [1928374]
-🔗 [Open Bazaar on Torn](https://www.torn.com/bazaar.php?userId=1928374)
-```
-
----
-
-## 5. Next Agent Implementation Plan
-1. Scaffold Python project structure and create `config.example.json` and `items.json`.
-2. Implement `api_client.py` with sliding-window rate limiter (hard cap at 80/min) and robust error handling.
-3. Build `analyzer.py` to calculate true median market price and filter outliers.
-4. Implement `notifier.py` with rich Discord Webhook embeds including one-click direct bazaar links.
-5. Add unit tests verifying median calculations and rate-limiting queue.

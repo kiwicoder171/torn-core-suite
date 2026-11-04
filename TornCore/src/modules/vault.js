@@ -30,26 +30,30 @@ function setInputValue(input, val) {
 export function initVaultHelper() {
   const inputs = new Set();
 
-  // 1. Direct attribute matching for deposit inputs
-  document.querySelectorAll(
-    'input[name="deposit"], input[name="money"], input[name="amount"], input[id*="deposit" i], input[placeholder*="deposit" i]'
-  ).forEach((el) => {
-    const parent = el.closest('form, .deposit-box, .tab-deposit, [class*="deposit" i], .cont-gray, .armory-deposit, .content');
-    if (parent && (/deposit/i.test(parent.textContent || '') || /deposit/i.test(el.name) || /deposit/i.test(el.id))) {
-      inputs.add(el);
-    }
-  });
+  // 1. Faction Armory: specifically target the "DEPOSIT MONEY" button and its input
+  const allButtons = Array.from(document.querySelectorAll('input[type="submit"], button, .btn'));
+  const depositMoneyBtn = allButtons.find(b =>
+    /DEPOSIT\s+MONEY/i.test(b.value || b.textContent || '')
+  );
 
-  // 2. Find inputs positioned near a "DEPOSIT" button (Faction Armory & Property Vault)
+  if (depositMoneyBtn) {
+    const parentContainer = depositMoneyBtn.closest('form, div, span');
+    if (parentContainer) {
+      const cashInput = parentContainer.querySelector('input[type="text"], input[type="number"]');
+      if (cashInput) inputs.add(cashInput);
+    }
+  }
+
+  // 2. Property Vault: target property vault deposit inputs (excluding item tables)
   document.querySelectorAll(
-    'input[type="submit"][value*="DEPOSIT" i], button[value*="DEPOSIT" i], .btn[value*="DEPOSIT" i], input[value*="DEPOSIT MONEY" i]'
-  ).forEach((btn) => {
-    const container = btn.closest('form, div, tr, td');
-    if (container) {
-      const textInput = container.querySelector(
-        'input[type="text"], input[type="number"], input:not([type="submit"]):not([type="hidden"]):not([type="button"])'
-      );
-      if (textInput) inputs.add(textInput);
+    'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
+  ).forEach((el) => {
+    // Explicitly exclude any item list rows or armory weapon/armor/med tables
+    if (el.closest('tr, .item-list, [class*="items" i], [data-item]')) return;
+
+    const parent = el.closest('form, .deposit-box, [class*="deposit" i], .cont-gray');
+    if (parent) {
+      inputs.add(el);
     }
   });
 
@@ -57,10 +61,12 @@ export function initVaultHelper() {
     // Avoid double injection
     if (input.parentElement && input.parentElement.querySelector('.torncore-vault-chips')) return;
     if (input.previousElementSibling && input.previousElementSibling.classList.contains('torncore-vault-chips')) return;
+    if (input.closest('.torncore-chip-container')) return;
 
     const settings = loadSettings();
     const chipsContainer = document.createElement('div');
     chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
+    chipsContainer.style.marginBottom = '6px';
 
     // Standard increment chips
     settings.vaultChips.forEach((amount) => {
@@ -106,7 +112,12 @@ export function initVaultHelper() {
     };
     chipsContainer.appendChild(keepChip);
 
-    // Insert directly before input or container
-    input.parentNode.insertBefore(chipsContainer, input);
+    // Insert directly before the cash input element or its container row
+    const targetRow = input.closest('form, div') || input;
+    if (targetRow && targetRow !== input && targetRow.parentElement) {
+      targetRow.parentElement.insertBefore(chipsContainer, targetRow);
+    } else {
+      input.parentNode.insertBefore(chipsContainer, input);
+    }
   });
 }

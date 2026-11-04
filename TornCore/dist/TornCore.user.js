@@ -659,27 +659,38 @@
   function initVaultHelper() {
     const inputs = new Set();
   
-    // 1. Faction Armory: specifically target the "DEPOSIT MONEY" button and its input
-    const allButtons = Array.from(document.querySelectorAll('input[type="submit"], button, .btn'));
-    const depositMoneyBtn = allButtons.find(b =>
-      /DEPOSIT\s+MONEY/i.test(b.value || b.textContent || '')
-    );
-  
-    if (depositMoneyBtn) {
-      const parentContainer = depositMoneyBtn.closest('form, div, span');
-      if (parentContainer) {
-        const cashInput = parentContainer.querySelector('input[type="text"], input[type="number"]');
-        if (cashInput) inputs.add(cashInput);
+    // 1. Faction Armory: find element or button with "DEPOSIT MONEY"
+    const allElements = document.querySelectorAll('button, input, a, span, div');
+    for (const el of allElements) {
+      if (el.children.length <= 1 && /DEPOSIT\s+MONEY/i.test(el.textContent || el.value || '')) {
+        const formOrBox = el.closest('form, div');
+        if (formOrBox) {
+          const textInput = formOrBox.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
+          if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+            inputs.add(textInput);
+          }
+        }
       }
     }
   
-    // 2. Property Vault: target property vault deposit inputs (excluding item tables)
+    // 2. Faction Armory balance row anchor: "You have $... and a balance of $..."
+    for (const el of allElements) {
+      if (el.children.length <= 2 && /and a balance of\s+\$/i.test(el.textContent || '')) {
+        const parentForm = el.closest('form') || el.parentElement;
+        if (parentForm) {
+          const textInput = parentForm.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
+          if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+            inputs.add(textInput);
+          }
+        }
+      }
+    }
+  
+    // 3. Property Vault: target property vault deposit inputs (excluding item tables)
     document.querySelectorAll(
       'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
     ).forEach((el) => {
-      // Explicitly exclude any item list rows or armory weapon/armor/med tables
       if (el.closest('tr, .item-list, [class*="items" i], [data-item]')) return;
-  
       const parent = el.closest('form, .deposit-box, [class*="deposit" i], .cont-gray');
       if (parent) {
         inputs.add(el);
@@ -695,7 +706,7 @@
       const settings = loadSettings();
       const chipsContainer = document.createElement('div');
       chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
-      chipsContainer.style.marginBottom = '6px';
+      chipsContainer.style.margin = '4px 0 6px 0';
   
       // Standard increment chips
       settings.vaultChips.forEach((amount) => {
@@ -741,10 +752,9 @@
       };
       chipsContainer.appendChild(keepChip);
   
-      // Insert directly before the cash input element or its container row
-      const targetRow = input.closest('form, div') || input;
-      if (targetRow && targetRow !== input && targetRow.parentElement) {
-        targetRow.parentElement.insertBefore(chipsContainer, targetRow);
+      // Insert chips directly above the input box inside its container
+      if (input.parentElement) {
+        input.parentElement.insertBefore(chipsContainer, input);
       } else {
         input.parentNode.insertBefore(chipsContainer, input);
       }
@@ -876,7 +886,9 @@
   }
   
   function renderTravelAgencyProfits() {
-    if (document.getElementById('torncore-travel-card')) return;
+    const existing = document.getElementById('torncore-travel-card');
+    if (existing && existing.isConnected) return;
+    if (existing && !existing.isConnected) existing.remove();
   
     const settings = loadSettings();
     const capacity = settings.travelCarryCapacity || 29;
@@ -884,6 +896,7 @@
     const card = document.createElement('div');
     card.id = 'torncore-travel-card';
     card.className = 'torncore-card';
+    card.style.margin = '10px 0';
   
     let rows = DESTINATIONS.map((d) => {
       const totalProfit = d.avgProfitPerItem * capacity;
@@ -924,40 +937,42 @@
       </div>
     `;
   
-    // 1. Anchor right before "Select Destination and Traveling Method"
-    const selectDestHeader = Array.from(document.querySelectorAll('div, h4, h3, p, span')).find(el =>
-      /Select Destination/i.test(el.textContent || '') && el.children.length <= 2
-    );
-    if (selectDestHeader && selectDestHeader.parentElement) {
-      selectDestHeader.parentElement.insertBefore(card, selectDestHeader);
-      return;
+    // Strategy 1: Anchor right before the "Select Destination and Traveling Method" block
+    const allNodes = document.querySelectorAll('div, h4, h3, p, span, form');
+    for (const node of allNodes) {
+      if (/Select Destination/i.test(node.textContent || '')) {
+        const headerBox = node.closest('.title-black, [class*="header" i], .travel-agency, div');
+        if (headerBox && headerBox.parentElement) {
+          headerBox.parentElement.insertBefore(card, headerBox);
+          return;
+        }
+      }
     }
   
-    // 2. Anchor relative to the inventory search bar
-    const searchInput = document.querySelector('input[placeholder*="inventory" i]');
+    // Strategy 2: Anchor relative to the item search bar or slots container
+    const searchInput = document.querySelector('input[placeholder*="inventory" i], input[placeholder*="Search" i]');
     if (searchInput) {
-      const searchRow = searchInput.closest('form, div, [class*="search" i]') || searchInput;
-      if (searchRow && searchRow.parentElement) {
-        searchRow.parentElement.insertBefore(card, searchRow);
+      const parentBox = searchInput.closest('form, div');
+      if (parentBox && parentBox.parentElement) {
+        parentBox.parentElement.insertBefore(card, parentBox.nextSibling);
         return;
       }
     }
   
-    // 3. Search for heading with "Travel Agency"
-    const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1, [class*="title" i]');
-    for (const h of headings) {
-      if (/travel\s*agency/i.test(h.textContent || '') && h.children.length <= 2 && h.parentElement) {
-        h.parentElement.insertBefore(card, h.nextSibling);
-        return;
+    // Strategy 3: Search for element with "Travel Agency" title
+    for (const node of allNodes) {
+      if (/^Travel\s+Agency$/i.test(node.textContent?.trim() || '')) {
+        if (node.parentElement) {
+          node.parentElement.insertBefore(card, node.nextSibling);
+          return;
+        }
       }
     }
   
-    // 4. Fallback container selectors
-    const fallbackContainer = document.querySelector(
-      '.travel-agency, [class*="travel" i], .content-wrapper, .content, #mainContainer, .stage'
-    );
-    if (fallbackContainer) {
-      fallbackContainer.prepend(card);
+    // Strategy 4: Fallback to main content container
+    const mainContent = document.querySelector('.content-wrapper, #mainContainer, .stage, .content');
+    if (mainContent) {
+      mainContent.prepend(card);
     }
   }
   
@@ -1569,8 +1584,13 @@
     router.register('gymTimer', () => true, initGymTimer);
   
     // Register Page Specific Modules
-    router.register('vault', (href) => href.includes('properties.php') || href.includes('factions.php'), initVaultHelper);
-    router.register('travel', (href) => href.includes('travelagency.php') || href.includes('page=travel'), initTravelSuite);
+    router.register('vault', (href) => {
+      return href.includes('properties.php') || href.includes('factions.php') || !!document.querySelector('input[value*="DEPOSIT MONEY" i], .armory-deposit');
+    }, initVaultHelper);
+  
+    router.register('travel', (href) => {
+      return href.includes('travelagency.php') || href.includes('page=travel') || !!document.querySelector('input[placeholder*="inventory" i]');
+    }, initTravelSuite);
     router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
     router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);
     router.register('hospital', (href) => href.includes('hospitalview.php') || href.includes('item.php'), initHospitalOptimizer);

@@ -44,7 +44,9 @@ export function initTravelSuite() {
 }
 
 function renderTravelAgencyProfits() {
-  if (document.getElementById('torncore-travel-card')) return;
+  const existing = document.getElementById('torncore-travel-card');
+  if (existing && existing.isConnected) return;
+  if (existing && !existing.isConnected) existing.remove();
 
   const settings = loadSettings();
   const capacity = settings.travelCarryCapacity || 29;
@@ -52,6 +54,7 @@ function renderTravelAgencyProfits() {
   const card = document.createElement('div');
   card.id = 'torncore-travel-card';
   card.className = 'torncore-card';
+  card.style.margin = '10px 0';
 
   let rows = DESTINATIONS.map((d) => {
     const totalProfit = d.avgProfitPerItem * capacity;
@@ -92,40 +95,42 @@ function renderTravelAgencyProfits() {
     </div>
   `;
 
-  // 1. Anchor right before "Select Destination and Traveling Method"
-  const selectDestHeader = Array.from(document.querySelectorAll('div, h4, h3, p, span')).find(el =>
-    /Select Destination/i.test(el.textContent || '') && el.children.length <= 2
-  );
-  if (selectDestHeader && selectDestHeader.parentElement) {
-    selectDestHeader.parentElement.insertBefore(card, selectDestHeader);
-    return;
+  // Strategy 1: Anchor right before the "Select Destination and Traveling Method" block
+  const allNodes = document.querySelectorAll('div, h4, h3, p, span, form');
+  for (const node of allNodes) {
+    if (/Select Destination/i.test(node.textContent || '')) {
+      const headerBox = node.closest('.title-black, [class*="header" i], .travel-agency, div');
+      if (headerBox && headerBox.parentElement) {
+        headerBox.parentElement.insertBefore(card, headerBox);
+        return;
+      }
+    }
   }
 
-  // 2. Anchor relative to the inventory search bar
-  const searchInput = document.querySelector('input[placeholder*="inventory" i]');
+  // Strategy 2: Anchor relative to the item search bar or slots container
+  const searchInput = document.querySelector('input[placeholder*="inventory" i], input[placeholder*="Search" i]');
   if (searchInput) {
-    const searchRow = searchInput.closest('form, div, [class*="search" i]') || searchInput;
-    if (searchRow && searchRow.parentElement) {
-      searchRow.parentElement.insertBefore(card, searchRow);
+    const parentBox = searchInput.closest('form, div');
+    if (parentBox && parentBox.parentElement) {
+      parentBox.parentElement.insertBefore(card, parentBox.nextSibling);
       return;
     }
   }
 
-  // 3. Search for heading with "Travel Agency"
-  const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1, [class*="title" i]');
-  for (const h of headings) {
-    if (/travel\s*agency/i.test(h.textContent || '') && h.children.length <= 2 && h.parentElement) {
-      h.parentElement.insertBefore(card, h.nextSibling);
-      return;
+  // Strategy 3: Search for element with "Travel Agency" title
+  for (const node of allNodes) {
+    if (/^Travel\s+Agency$/i.test(node.textContent?.trim() || '')) {
+      if (node.parentElement) {
+        node.parentElement.insertBefore(card, node.nextSibling);
+        return;
+      }
     }
   }
 
-  // 4. Fallback container selectors
-  const fallbackContainer = document.querySelector(
-    '.travel-agency, [class*="travel" i], .content-wrapper, .content, #mainContainer, .stage'
-  );
-  if (fallbackContainer) {
-    fallbackContainer.prepend(card);
+  // Strategy 4: Fallback to main content container
+  const mainContent = document.querySelector('.content-wrapper, #mainContainer, .stage, .content');
+  if (mainContent) {
+    mainContent.prepend(card);
   }
 }
 

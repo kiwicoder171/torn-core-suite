@@ -42,8 +42,13 @@ function bootstrap() {
   router.register('gymTimer', () => true, initGymTimer);
 
   // Register Page Specific Modules
-  router.register('vault', (href) => href.includes('properties.php') || href.includes('factions.php'), initVaultHelper);
-  router.register('travel', (href) => href.includes('travelagency.php') || href.includes('page=travel'), initTravelSuite);
+  router.register('vault', (href) => {
+    return href.includes('properties.php') || href.includes('factions.php') || !!document.querySelector('input[value*="DEPOSIT MONEY" i], .armory-deposit');
+  }, initVaultHelper);
+
+  router.register('travel', (href) => {
+    return href.includes('travelagency.php') || href.includes('page=travel') || !!document.querySelector('input[placeholder*="inventory" i]');
+  }, initTravelSuite);
   router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
   router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);
   router.register('hospital', (href) => href.includes('hospitalview.php') || href.includes('item.php'), initHospitalOptimizer);

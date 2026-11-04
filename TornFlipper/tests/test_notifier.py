@@ -13,6 +13,7 @@ def sample_deal():
         price=800000,
         quantity=10,
         reference_price=835000,
+        recommended_flip_price=834999,
         active_median=835000,
         baseline_price=835000,
         discount_pct=4.19,

@@ -17,10 +17,10 @@ class TornApiException(Exception):
 
 class TornApiClient:
     """
-    Async client for the official Torn.com API v1 with built-in rate-limiting and backoff.
+    Async client for the official Torn.com API v2 with rate-limiting and backoff.
     """
 
-    BASE_URL = "https://api.torn.com"
+    BASE_URL = "https://api.torn.com/v2"
 
     def __init__(
         self,
@@ -46,21 +46,22 @@ class TornApiClient:
 
     async def fetch_market_data(self, item_id: int) -> dict[str, Any]:
         """
-        Fetch active Bazaar and Item Market listings for a given item ID.
-        Endpoint: https://api.torn.com/market/<item_id>?selections=bazaar,itemmarket&key=<key>
+        Fetch active Item Market listings for a given item ID using Torn API v2.
+        Endpoint: https://api.torn.com/v2/market/<item_id>/itemmarket?key=<key>
         """
-        endpoint = f"{self.BASE_URL}/market/{item_id}?selections=bazaar,itemmarket&key={self.api_key}"
+        endpoint = f"{self.BASE_URL}/market/{item_id}/itemmarket?key={self.api_key}"
         return await self._execute_request(endpoint)
 
     async def verify_key(self) -> tuple[bool, str]:
         """
-        Check if the API key is valid by querying the basic user endpoint.
+        Verify API key by querying the v2 basic profile endpoint.
         """
         endpoint = f"{self.BASE_URL}/user/?selections=basic&key={self.api_key}"
         try:
             data = await self._execute_request(endpoint)
-            name = data.get("name", "Unknown")
-            player_id = data.get("player_id", "Unknown")
+            profile = data.get("profile", {})
+            name = profile.get("name", "Unknown")
+            player_id = profile.get("id", "Unknown")
             return True, f"Key verified for {name} [{player_id}]"
         except TornApiException as e:
             return False, str(e)
@@ -69,7 +70,6 @@ class TornApiClient:
 
     async def _execute_request(self, url: str, max_retries: int = 3) -> dict[str, Any]:
         for attempt in range(max_retries):
-            # Await rate limit slot
             await self.rate_limiter.acquire()
             session = await self.get_session()
 
@@ -89,13 +89,11 @@ class TornApiClient:
 
                     data = await response.json()
 
-                    # Check for Torn API business-level errors
                     if "error" in data:
                         err = data["error"]
                         code = err.get("code", 0)
                         msg = err.get("error", "Unknown Torn API error")
 
-                        # Code 5: Too Many Requests
                         if code == 5:
                             wait_time = 15.0 * (attempt + 1)
                             logger.warning(f"Torn API Code 5 (Too many requests). Backing off for {wait_time}s...")

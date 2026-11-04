@@ -656,17 +656,33 @@
     input.focus();
   }
   
+  function isInvalidTarget(input) {
+    if (!input) return true;
+    // Strictly ignore header, search inputs, navigation, chat, forums
+    if (input.closest('#header-root, header, nav, .header, #search, [class*="header" i], [id*="header" i]')) return true;
+    if (/search/i.test(input.placeholder || input.name || input.id || '')) return true;
+    // Strictly ignore item tables, inventory tables, chat inputs
+    if (input.closest('tr, table, tbody, .item-list, [class*="items" i], [data-item], #chatRoot')) return true;
+    // Strictly ignore submit/button/hidden
+    if (input.type === 'submit' || input.type === 'button' || input.type === 'hidden') return true;
+    return false;
+  }
+  
   function initVaultHelper() {
+    // 0. Clean up any misplaced orphan chips in header or search
+    document.querySelectorAll('#header-root .torncore-vault-chips, header .torncore-vault-chips, nav .torncore-vault-chips').forEach(c => c.remove());
+  
     const inputs = new Set();
   
     // 1. Faction Armory: find element or button with "DEPOSIT MONEY"
-    const allElements = document.querySelectorAll('button, input, a, span, div');
-    for (const el of allElements) {
-      if (el.children.length <= 1 && /DEPOSIT\s+MONEY/i.test(el.textContent || el.value || '')) {
-        const formOrBox = el.closest('form, div');
-        if (formOrBox) {
-          const textInput = formOrBox.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
-          if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+    const depositMoneyBtns = document.querySelectorAll('input[type="submit"], input[type="button"], button');
+    for (const btn of depositMoneyBtns) {
+      const val = (btn.value || btn.textContent || '').trim();
+      if (/deposit\s+money/i.test(val)) {
+        const container = btn.closest('form, .cont-gray, div');
+        if (container) {
+          const textInput = container.querySelector('input[type="text"], input[type="number"], input:not([type="submit"]):not([type="button"]):not([type="hidden"])');
+          if (textInput && !isInvalidTarget(textInput)) {
             inputs.add(textInput);
           }
         }
@@ -674,12 +690,13 @@
     }
   
     // 2. Faction Armory balance row anchor: "You have $... and a balance of $..."
-    for (const el of allElements) {
-      if (el.children.length <= 2 && /and a balance of\s+\$/i.test(el.textContent || '')) {
-        const parentForm = el.closest('form') || el.parentElement;
+    const candidateLabels = document.querySelectorAll('div, p, span');
+    for (const label of candidateLabels) {
+      if (label.children.length === 0 && /and a balance of\s+\$/i.test(label.textContent || '')) {
+        const parentForm = label.closest('form') || label.parentElement;
         if (parentForm) {
-          const textInput = parentForm.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
-          if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+          const textInput = parentForm.querySelector('input[type="text"], input[type="number"], input:not([type="submit"]):not([type="button"]):not([type="hidden"])');
+          if (textInput && !isInvalidTarget(textInput)) {
             inputs.add(textInput);
           }
         }
@@ -687,26 +704,27 @@
     }
   
     // 3. Property Vault: target property vault deposit inputs (excluding item tables)
-    document.querySelectorAll(
-      'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
-    ).forEach((el) => {
-      if (el.closest('tr, .item-list, [class*="items" i], [data-item]')) return;
-      const parent = el.closest('form, .deposit-box, [class*="deposit" i], .cont-gray');
-      if (parent) {
-        inputs.add(el);
-      }
-    });
+    if (window.location.href.includes('properties.php')) {
+      document.querySelectorAll(
+        '#properties-vault input, .vault-cont input, .property-vault input, input[name="deposit"], input[id*="deposit" i]'
+      ).forEach((el) => {
+        if (!isInvalidTarget(el)) {
+          inputs.add(el);
+        }
+      });
+    }
   
     inputs.forEach((input) => {
       // Avoid double injection
       if (input.parentElement && input.parentElement.querySelector('.torncore-vault-chips')) return;
-      if (input.previousElementSibling && input.previousElementSibling.classList.contains('torncore-vault-chips')) return;
+      if (input.form && input.form.querySelector('.torncore-vault-chips')) return;
+      if (input.closest('.cont-gray, form, div')?.querySelector('.torncore-vault-chips')) return;
       if (input.closest('.torncore-chip-container')) return;
   
       const settings = loadSettings();
       const chipsContainer = document.createElement('div');
       chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
-      chipsContainer.style.margin = '4px 0 6px 0';
+      chipsContainer.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 6px 0; align-items:center;';
   
       // Standard increment chips
       settings.vaultChips.forEach((amount) => {
@@ -752,11 +770,20 @@
       };
       chipsContainer.appendChild(keepChip);
   
-      // Insert chips directly above the input box inside its container
-      if (input.parentElement) {
-        input.parentElement.insertBefore(chipsContainer, input);
-      } else {
-        input.parentNode.insertBefore(chipsContainer, input);
+      // Insert chips cleanly directly above the input row
+      const form = input.form || input.closest('form');
+      if (form) {
+        if (input.parentElement && input.parentElement !== form && input.parentElement.parentElement === form) {
+          form.insertBefore(chipsContainer, input.parentElement);
+        } else {
+          form.insertBefore(chipsContainer, form.firstChild);
+        }
+      } else if (input.parentElement) {
+        if (input.parentElement.parentElement && input.parentElement.children.length <= 4) {
+          input.parentElement.parentElement.insertBefore(chipsContainer, input.parentElement);
+        } else {
+          input.parentElement.insertBefore(chipsContainer, input);
+        }
       }
     });
   }
@@ -845,17 +872,17 @@
   
   // Standard round-trip flight times (minutes) without/with Airstrip & WLT
   const DESTINATIONS = [
+    { name: 'UAE', flightMin: 190, highProfitItem: 'Camel Plushie', avgProfitPerItem: 85000 },
     { name: 'Mexico', flightMin: 18, highProfitItem: 'Jaguar Plushie', avgProfitPerItem: 7500 },
     { name: 'Cayman Islands', flightMin: 25, highProfitItem: 'Banana Orchid', avgProfitPerItem: 9200 },
-    { name: 'Canada', flightMin: 29, highProfitItem: 'Wolverine Plushie', avgProfitPerItem: 8300 },
-    { name: 'Hawaii', flightMin: 94, highProfitItem: 'Tsarina Orchid', avgProfitPerItem: 12000 },
     { name: 'United Kingdom', flightMin: 111, highProfitItem: 'Red Fox Plushie', avgProfitPerItem: 38000 },
-    { name: 'Argentina', flightMin: 117, highProfitItem: 'Ceibo Flower', avgProfitPerItem: 22000 },
-    { name: 'Switzerland', flightMin: 123, highProfitItem: 'Chamois Plushie', avgProfitPerItem: 36000 },
-    { name: 'Japan', flightMin: 158, highProfitItem: 'Cherry Blossom', avgProfitPerItem: 48000 },
-    { name: 'China', flightMin: 169, highProfitItem: 'Panda Plushie', avgProfitPerItem: 55000 },
-    { name: 'UAE', flightMin: 190, highProfitItem: 'Camel Plushie', avgProfitPerItem: 85000 },
     { name: 'South Africa', flightMin: 208, highProfitItem: 'Lion Plushie', avgProfitPerItem: 68000 },
+    { name: 'China', flightMin: 169, highProfitItem: 'Panda Plushie', avgProfitPerItem: 55000 },
+    { name: 'Japan', flightMin: 158, highProfitItem: 'Cherry Blossom', avgProfitPerItem: 48000 },
+    { name: 'Switzerland', flightMin: 123, highProfitItem: 'Chamois Plushie', avgProfitPerItem: 36000 },
+    { name: 'Canada', flightMin: 29, highProfitItem: 'Wolverine Plushie', avgProfitPerItem: 8300 },
+    { name: 'Argentina', flightMin: 117, highProfitItem: 'Ceibo Flower', avgProfitPerItem: 22000 },
+    { name: 'Hawaii', flightMin: 94, highProfitItem: 'Tsarina Orchid', avgProfitPerItem: 12000 },
   ];
   
   function getLiquidCash() {
@@ -874,9 +901,10 @@
   
     if (href.includes('travelagency.php')) {
       renderTravelAgencyProfits();
-      // Re-check after 300ms in case Torn's dynamic SPA is still building DOM
+      // Re-check after dynamic DOM renders
       setTimeout(renderTravelAgencyProfits, 300);
       setTimeout(renderTravelAgencyProfits, 800);
+      setTimeout(renderTravelAgencyProfits, 1500);
     }
   
     if (href.includes('page=travel') || href.includes('index.php')) {
@@ -887,8 +915,12 @@
   
   function renderTravelAgencyProfits() {
     const existing = document.getElementById('torncore-travel-card');
-    if (existing && existing.isConnected) return;
-    if (existing && !existing.isConnected) existing.remove();
+    if (existing && existing.isConnected && existing.offsetHeight > 0) {
+      return;
+    }
+    if (existing) {
+      existing.remove();
+    }
   
     const settings = loadSettings();
     const capacity = settings.travelCarryCapacity || 29;
@@ -896,38 +928,49 @@
     const card = document.createElement('div');
     card.id = 'torncore-travel-card';
     card.className = 'torncore-card';
-    card.style.margin = '10px 0';
+    card.style.cssText = 'margin:12px 0; background:#1e293b; border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.3);';
   
-    let rows = DESTINATIONS.map((d) => {
+    // Calculate & rank by hourly yield descending
+    const ranked = DESTINATIONS.map((d) => {
       const totalProfit = d.avgProfitPerItem * capacity;
       const roundTripMin = d.flightMin * 2;
       const profitPerHour = Math.round((totalProfit / roundTripMin) * 60);
+      return { ...d, totalProfit, roundTripMin, profitPerHour };
+    }).sort((a, b) => b.profitPerHour - a.profitPerHour);
+  
+    const rows = ranked.map((d, idx) => {
+      let rankBadge = `<span style="color:#64748b; font-size:10px; margin-right:4px;">#${idx + 1}</span>`;
+      if (idx === 0) rankBadge = `<span style="color:#fbbf24; font-weight:700; margin-right:4px;">🥇 #1</span>`;
+      if (idx === 1) rankBadge = `<span style="color:#cbd5e1; font-weight:700; margin-right:4px;">🥈 #2</span>`;
+      if (idx === 2) rankBadge = `<span style="color:#f97316; font-weight:700; margin-right:4px;">🥉 #3</span>`;
   
       return `
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.05); text-align:left;">
-          <td style="padding:4px 6px; font-weight:600; color:#f1f5f9;">${d.name}</td>
-          <td style="padding:4px 6px; color:#94a3b8;">${d.highProfitItem}</td>
-          <td style="padding:4px 6px; color:#94a3b8;">${d.flightMin}m (one-way)</td>
-          <td style="padding:4px 6px; color:#34d399; font-weight:600;">$${totalProfit.toLocaleString()}</td>
-          <td style="padding:4px 6px; color:#60a5fa; font-weight:700;">$${profitPerHour.toLocaleString()}/hr</td>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06); text-align:left;">
+          <td style="padding:6px 8px; font-weight:600; color:#f1f5f9;">
+            ${rankBadge} ${d.name}
+          </td>
+          <td style="padding:6px 8px; color:#cbd5e1;">${d.highProfitItem}</td>
+          <td style="padding:6px 8px; color:#94a3b8;">${d.flightMin}m (one-way)</td>
+          <td style="padding:6px 8px; color:#34d399; font-weight:600;">$${d.totalProfit.toLocaleString()}</td>
+          <td style="padding:6px 8px; color:#60a5fa; font-weight:700; font-family:monospace;">$${d.profitPerHour.toLocaleString()}/hr</td>
         </tr>
       `;
     }).join('');
   
     card.innerHTML = `
-      <div class="torncore-card-header">
-        <span>✈ Travel Agency Estimated Flight Profit (${capacity} Items Capacity)</span>
-        <span style="font-size:10px; color:#94a3b8;">Estimates based on plushie/flower sets</span>
+      <div class="torncore-card-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; margin-bottom:8px;">
+        <span style="font-size:13px; font-weight:700; color:#38bdf8;">✈ Travel Agency Flight Profit Matrix (${capacity} Items Capacity)</span>
+        <span style="font-size:11px; color:#94a3b8;">Sorted by Hourly Yield · Updated Estimates</span>
       </div>
       <div style="overflow-x:auto;">
         <table style="width:100%; font-size:11px; border-collapse:collapse;">
           <thead>
-            <tr style="color:#64748b; border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;">
-              <th style="padding:4px 6px;">Country</th>
-              <th style="padding:4px 6px;">Target Item</th>
-              <th style="padding:4px 6px;">Flight</th>
-              <th style="padding:4px 6px;">Roundtrip Net</th>
-              <th style="padding:4px 6px;">Hourly Yield</th>
+            <tr style="color:#64748b; border-bottom:1px solid rgba(255,255,255,0.12); text-align:left;">
+              <th style="padding:6px 8px;">Rank / Country</th>
+              <th style="padding:6px 8px;">Target Plushie / Flower</th>
+              <th style="padding:6px 8px;">Flight Time</th>
+              <th style="padding:6px 8px;">Roundtrip Net</th>
+              <th style="padding:6px 8px;">Hourly Yield</th>
             </tr>
           </thead>
           <tbody>
@@ -937,11 +980,11 @@
       </div>
     `;
   
-    // Strategy 1: Anchor right before the "Select Destination and Traveling Method" block
-    const allNodes = document.querySelectorAll('div, h4, h3, p, span, form');
-    for (const node of allNodes) {
-      if (/Select Destination/i.test(node.textContent || '')) {
-        const headerBox = node.closest('.title-black, [class*="header" i], .travel-agency, div');
+    // Strategy 1: Anchor right before the "Select Destination and Traveling Method" bar
+    const allElements = document.querySelectorAll('div, h4, h3, h2, span, p');
+    for (const el of allElements) {
+      if (el.children.length <= 2 && /Select\s+Destination/i.test(el.textContent || '')) {
+        const headerBox = el.closest('.title-black, [class*="title" i], [class*="header" i]') || el;
         if (headerBox && headerBox.parentElement) {
           headerBox.parentElement.insertBefore(card, headerBox);
           return;
@@ -949,30 +992,31 @@
       }
     }
   
-    // Strategy 2: Anchor relative to the item search bar or slots container
-    const searchInput = document.querySelector('input[placeholder*="inventory" i], input[placeholder*="Search" i]');
-    if (searchInput) {
-      const parentBox = searchInput.closest('form, div');
-      if (parentBox && parentBox.parentElement) {
-        parentBox.parentElement.insertBefore(card, parentBox.nextSibling);
+    // Strategy 2: Anchor relative to inventory slots container / search input
+    const invInput = document.querySelector('input[placeholder*="item inventory" i], input[placeholder*="inventory" i]');
+    if (invInput) {
+      const invBox = invInput.closest('form, [class*="inventory" i], .cont-gray, div');
+      if (invBox && invBox.parentElement) {
+        invBox.parentElement.insertBefore(card, invBox.nextSibling);
         return;
       }
     }
   
-    // Strategy 3: Search for element with "Travel Agency" title
-    for (const node of allNodes) {
-      if (/^Travel\s+Agency$/i.test(node.textContent?.trim() || '')) {
-        if (node.parentElement) {
-          node.parentElement.insertBefore(card, node.nextSibling);
+    // Strategy 3: Search for leaf "Travel Agency" title
+    for (const el of allElements) {
+      if (el.children.length <= 1 && /^Travel\s+Agency$/i.test(el.textContent?.trim() || '')) {
+        const titleBox = el.closest('.content-title, .title-black, [class*="title" i]') || el;
+        if (titleBox && titleBox.parentElement) {
+          titleBox.parentElement.insertBefore(card, titleBox.nextSibling);
           return;
         }
       }
     }
   
     // Strategy 4: Fallback to main content container
-    const mainContent = document.querySelector('.content-wrapper, #mainContainer, .stage, .content');
-    if (mainContent) {
-      mainContent.prepend(card);
+    const mainStage = document.querySelector('.travel-agency, #travelagency-container, .stage, .content-wrapper, #mainContainer');
+    if (mainStage) {
+      mainStage.prepend(card);
     }
   }
   

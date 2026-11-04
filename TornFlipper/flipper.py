@@ -157,10 +157,17 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Mock run without network alerts")
     args = parser.parse_args()
 
-    # Determine base directory
+    # Determine config and items paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = args.config if os.path.isabs(args.config) else os.path.join(base_dir, args.config)
-    items_path = args.items if os.path.isabs(args.items) else os.path.join(base_dir, args.items)
+    if os.path.isabs(args.config) or os.path.exists(args.config):
+        config_path = args.config
+    else:
+        config_path = os.path.join(base_dir, args.config)
+
+    if os.path.isabs(args.items) or os.path.exists(args.items):
+        items_path = args.items
+    else:
+        items_path = os.path.join(base_dir, args.items)
 
     if not os.path.exists(config_path):
         example_config = os.path.join(base_dir, "config.example.json")

@@ -121,5 +121,6 @@ def test_analyzer_imarket_link_generation(analyzer):
     assert len(deals) == 1
     deal = deals[0]
     assert deal.origin == "itemmarket"
-    assert "imarket.php#/p=shop" in deal.buy_url
-    assert "searchitem=283" in deal.buy_url
+    assert "page.php?sid=ItemMarket" in deal.buy_url
+    assert "itemID=283" in deal.buy_url
+    assert "itemName=Donator%20Pack" in deal.buy_url

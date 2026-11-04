@@ -69,6 +69,7 @@ class WebhookNotifier:
 
         fields = [
             {"name": "🏷️ Deal Price", "value": f"**${deal.price:,}**", "inline": True},
+            {"name": "🎯 Recommended Flip", "value": f"**${deal.recommended_flip_price:,}**", "inline": True},
             {"name": "📊 Reference", "value": f"${deal.reference_price:,} (-{deal.discount_pct}%)", "inline": True},
             {"name": "📦 Quantity", "value": f"**{deal.quantity:,}** units", "inline": True},
             {
@@ -77,14 +78,14 @@ class WebhookNotifier:
                 "inline": True,
             },
             {
-                "name": "💵 Total Potential Profit",
+                "name": "💵 Total Flip Profit",
                 "value": f"**+${deal.total_potential_profit:,}**",
                 "inline": True,
             },
             {
                 "name": "🏪 Origin",
                 "value": f"{deal.origin.capitalize()} (Seller: `{deal.seller_id}`)",
-                "inline": True,
+                "inline": False,
             },
         ]
 
@@ -133,10 +134,11 @@ class WebhookNotifier:
         warning_line = f"\n⚠️ <b>MUG RISK:</b> {deal.mug_risk_reason}" if deal.is_high_mug_risk else ""
         text = (
             f"🔔 <b>FLIP OPPORTUNITY: {deal.item_name}</b>\n\n"
-            f"🏷️ <b>Price:</b> ${deal.price:,} (-{deal.discount_pct}%)\n"
-            f"📊 <b>Ref Value:</b> ${deal.reference_price:,}\n"
+            f"🏷️ <b>Deal Price:</b> ${deal.price:,} (-{deal.discount_pct}%)\n"
+            f"🎯 <b>Recommended Flip:</b> ${deal.recommended_flip_price:,}\n"
+            f"📊 <b>Ref Market:</b> ${deal.reference_price:,}\n"
             f"📦 <b>Available:</b> {deal.quantity:,} units\n"
-            f"💰 <b>Total Potential Profit:</b> +${deal.total_potential_profit:,}\n"
+            f"💰 <b>Total Flip Profit:</b> +${deal.total_potential_profit:,}\n"
             f"🏪 <b>Origin:</b> {deal.origin.capitalize()} (Seller: {deal.seller_id})"
             f"{warning_line}\n\n"
             f"👉 <a href=\"{deal.buy_url}\"><b>Open {'Bazaar' if deal.origin == 'bazaar' else 'Item Market'} on Torn</b></a>"

@@ -27,17 +27,33 @@ function setInputValue(input, val) {
   input.focus();
 }
 
+function isInvalidTarget(input) {
+  if (!input) return true;
+  // Strictly ignore header, search inputs, navigation, chat, forums
+  if (input.closest('#header-root, header, nav, .header, #search, [class*="header" i], [id*="header" i]')) return true;
+  if (/search/i.test(input.placeholder || input.name || input.id || '')) return true;
+  // Strictly ignore item tables, inventory tables, chat inputs
+  if (input.closest('tr, table, tbody, .item-list, [class*="items" i], [data-item], #chatRoot')) return true;
+  // Strictly ignore submit/button/hidden
+  if (input.type === 'submit' || input.type === 'button' || input.type === 'hidden') return true;
+  return false;
+}
+
 export function initVaultHelper() {
+  // 0. Clean up any misplaced orphan chips in header or search
+  document.querySelectorAll('#header-root .torncore-vault-chips, header .torncore-vault-chips, nav .torncore-vault-chips').forEach(c => c.remove());
+
   const inputs = new Set();
 
   // 1. Faction Armory: find element or button with "DEPOSIT MONEY"
-  const allElements = document.querySelectorAll('button, input, a, span, div');
-  for (const el of allElements) {
-    if (el.children.length <= 1 && /DEPOSIT\s+MONEY/i.test(el.textContent || el.value || '')) {
-      const formOrBox = el.closest('form, div');
-      if (formOrBox) {
-        const textInput = formOrBox.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
-        if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+  const depositMoneyBtns = document.querySelectorAll('input[type="submit"], input[type="button"], button');
+  for (const btn of depositMoneyBtns) {
+    const val = (btn.value || btn.textContent || '').trim();
+    if (/deposit\s+money/i.test(val)) {
+      const container = btn.closest('form, .cont-gray, div');
+      if (container) {
+        const textInput = container.querySelector('input[type="text"], input[type="number"], input:not([type="submit"]):not([type="button"]):not([type="hidden"])');
+        if (textInput && !isInvalidTarget(textInput)) {
           inputs.add(textInput);
         }
       }
@@ -45,12 +61,13 @@ export function initVaultHelper() {
   }
 
   // 2. Faction Armory balance row anchor: "You have $... and a balance of $..."
-  for (const el of allElements) {
-    if (el.children.length <= 2 && /and a balance of\s+\$/i.test(el.textContent || '')) {
-      const parentForm = el.closest('form') || el.parentElement;
+  const candidateLabels = document.querySelectorAll('div, p, span');
+  for (const label of candidateLabels) {
+    if (label.children.length === 0 && /and a balance of\s+\$/i.test(label.textContent || '')) {
+      const parentForm = label.closest('form') || label.parentElement;
       if (parentForm) {
-        const textInput = parentForm.querySelector('input[type="text"], input[type="number"], input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
-        if (textInput && !textInput.closest('tr, .item-list, [class*="items" i], [data-item]')) {
+        const textInput = parentForm.querySelector('input[type="text"], input[type="number"], input:not([type="submit"]):not([type="button"]):not([type="hidden"])');
+        if (textInput && !isInvalidTarget(textInput)) {
           inputs.add(textInput);
         }
       }
@@ -58,26 +75,27 @@ export function initVaultHelper() {
   }
 
   // 3. Property Vault: target property vault deposit inputs (excluding item tables)
-  document.querySelectorAll(
-    'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
-  ).forEach((el) => {
-    if (el.closest('tr, .item-list, [class*="items" i], [data-item]')) return;
-    const parent = el.closest('form, .deposit-box, [class*="deposit" i], .cont-gray');
-    if (parent) {
-      inputs.add(el);
-    }
-  });
+  if (window.location.href.includes('properties.php')) {
+    document.querySelectorAll(
+      '#properties-vault input, .vault-cont input, .property-vault input, input[name="deposit"], input[id*="deposit" i]'
+    ).forEach((el) => {
+      if (!isInvalidTarget(el)) {
+        inputs.add(el);
+      }
+    });
+  }
 
   inputs.forEach((input) => {
     // Avoid double injection
     if (input.parentElement && input.parentElement.querySelector('.torncore-vault-chips')) return;
-    if (input.previousElementSibling && input.previousElementSibling.classList.contains('torncore-vault-chips')) return;
+    if (input.form && input.form.querySelector('.torncore-vault-chips')) return;
+    if (input.closest('.cont-gray, form, div')?.querySelector('.torncore-vault-chips')) return;
     if (input.closest('.torncore-chip-container')) return;
 
     const settings = loadSettings();
     const chipsContainer = document.createElement('div');
     chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
-    chipsContainer.style.margin = '4px 0 6px 0';
+    chipsContainer.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 6px 0; align-items:center;';
 
     // Standard increment chips
     settings.vaultChips.forEach((amount) => {
@@ -123,11 +141,20 @@ export function initVaultHelper() {
     };
     chipsContainer.appendChild(keepChip);
 
-    // Insert chips directly above the input box inside its container
-    if (input.parentElement) {
-      input.parentElement.insertBefore(chipsContainer, input);
-    } else {
-      input.parentNode.insertBefore(chipsContainer, input);
+    // Insert chips cleanly directly above the input row
+    const form = input.form || input.closest('form');
+    if (form) {
+      if (input.parentElement && input.parentElement !== form && input.parentElement.parentElement === form) {
+        form.insertBefore(chipsContainer, input.parentElement);
+      } else {
+        form.insertBefore(chipsContainer, form.firstChild);
+      }
+    } else if (input.parentElement) {
+      if (input.parentElement.parentElement && input.parentElement.children.length <= 4) {
+        input.parentElement.parentElement.insertBefore(chipsContainer, input.parentElement);
+      } else {
+        input.parentElement.insertBefore(chipsContainer, input);
+      }
     }
   });
 }

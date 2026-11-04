@@ -18,6 +18,7 @@ Part of [[_Brain/00-Master-Orchestrator-MOC|00-Master-Orchestrator-MOC]] · Hub 
 - 2026-11-04: Pushed repository to GitHub (`kiwicoder171/torn-core-suite`), published v1.0.1 with in-modal privacy guarantee.
 - 2026-11-04: Published thread on Torn Forums (*Tools & Userscripts*).
 - 2026-11-05: Re-organized repository into modular subfolders (`TornCore/` for userscript, prepared for `TornFlipper/`). Maintained root `dist/` mirror so live forum links remain operational.
+- 2026-11-05: Shipped v1.1.0 milestone — fixed vault quick-fill deposit positioning directly above cash deposit row, overhauled Travel Agency profit matrix with hourly yield rankings and leaf-node DOM insertion. Synchronized TornFlipper Torn API v2 updates.
 
 
 ## 4. TornFlipper Backlog & Implementation Tickets

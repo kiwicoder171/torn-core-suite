@@ -1,0 +1,13 @@
+{
+  "name": "torn-core-suite",
+  "version": "1.0.0",
+  "description": "Unified 100% rule-compliant QoL & calculation userscript suite for Torn.com",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "keywords": ["torn", "userscript", "tampermonkey", "qol"],
+  "author": "Antigravity",
+  "license": "MIT"
+}

@@ -43,11 +43,17 @@ function bootstrap() {
 
   // Register Page Specific Modules
   router.register('vault', (href) => {
-    return href.includes('properties.php') || href.includes('factions.php') || !!document.querySelector('input[value*="DEPOSIT MONEY" i], .armory-deposit');
+    return href.includes('properties.php') ||
+           href.includes('factions.php') ||
+           /DEPOSIT\s+MONEY/i.test(document.body?.textContent || '') ||
+           /balance of\s+\$/i.test(document.body?.textContent || '');
   }, initVaultHelper);
 
   router.register('travel', (href) => {
-    return href.includes('travelagency.php') || href.includes('page=travel') || !!document.querySelector('input[placeholder*="inventory" i]');
+    return href.includes('travel') ||
+           !!document.querySelector('input[placeholder*="inventory" i]') ||
+           /Select\s+Destination/i.test(document.body?.textContent || '') ||
+           /Travel\s+Agency/i.test(document.body?.textContent || '');
   }, initTravelSuite);
   router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
   router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);

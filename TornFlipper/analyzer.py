@@ -59,8 +59,10 @@ class MarketAnalyzer:
         # 1. Parse itemmarket (Handles API v2 object schema or API v1 list schema)
         imarket_raw = market_data.get("itemmarket")
         if isinstance(imarket_raw, dict):
-            # API v2 schema: {"item": {"average_price": ...}, "listings": [{"price": ..., "amount": ...}]}
+            # API v2 schema: {"item": {"name": ..., "average_price": ...}, "listings": [{"price": ..., "amount": ...}]}
             v2_item = imarket_raw.get("item", {})
+            if v2_item.get("name"):
+                item_name = v2_item["name"]
             v2_avg = v2_item.get("average_price", 0)
             if baseline_price <= 0 and v2_avg > 0:
                 baseline_price = v2_avg

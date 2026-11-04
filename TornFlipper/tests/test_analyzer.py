@@ -39,9 +39,10 @@ def test_analyzer_detects_valid_deal(analyzer):
     deal = deals[0]
     assert deal.item_name == "Xanax"
     assert deal.price == 800000
+    assert deal.recommended_flip_price == 834999
     assert deal.quantity == 10
-    assert deal.profit_per_unit == 35000
-    assert deal.total_potential_profit == 350000
+    assert deal.profit_per_unit == 34999
+    assert deal.total_potential_profit == 349990
     assert deal.origin == "bazaar"
     assert deal.seller_id == 1001
     assert "bazaar.php?userId=1001" in deal.buy_url

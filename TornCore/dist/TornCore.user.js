@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.1
+// @version      1.0.2
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -657,20 +657,39 @@
   }
   
   function initVaultHelper() {
-    // Target deposit inputs on property vault and faction bank
-    const depositInputs = document.querySelectorAll(
-      'input[name="deposit"], input[id*="deposit" i], input[placeholder*="deposit" i], .deposit-box input'
-    );
+    const inputs = new Set();
   
-    depositInputs.forEach((input) => {
+    // 1. Direct attribute matching for deposit inputs
+    document.querySelectorAll(
+      'input[name="deposit"], input[name="money"], input[name="amount"], input[id*="deposit" i], input[placeholder*="deposit" i]'
+    ).forEach((el) => {
+      const parent = el.closest('form, .deposit-box, .tab-deposit, [class*="deposit" i], .cont-gray, .armory-deposit, .content');
+      if (parent && (/deposit/i.test(parent.textContent || '') || /deposit/i.test(el.name) || /deposit/i.test(el.id))) {
+        inputs.add(el);
+      }
+    });
+  
+    // 2. Find inputs positioned near a "DEPOSIT" button (Faction Armory & Property Vault)
+    document.querySelectorAll(
+      'input[type="submit"][value*="DEPOSIT" i], button[value*="DEPOSIT" i], .btn[value*="DEPOSIT" i], input[value*="DEPOSIT MONEY" i]'
+    ).forEach((btn) => {
+      const container = btn.closest('form, div, tr, td');
+      if (container) {
+        const textInput = container.querySelector(
+          'input[type="text"], input[type="number"], input:not([type="submit"]):not([type="hidden"]):not([type="button"])'
+        );
+        if (textInput) inputs.add(textInput);
+      }
+    });
+  
+    inputs.forEach((input) => {
       // Avoid double injection
-      if (input.parentElement.querySelector('.torncore-vault-chips')) return;
+      if (input.parentElement && input.parentElement.querySelector('.torncore-vault-chips')) return;
+      if (input.previousElementSibling && input.previousElementSibling.classList.contains('torncore-vault-chips')) return;
   
       const settings = loadSettings();
       const chipsContainer = document.createElement('div');
       chipsContainer.className = 'torncore-chip-container torncore-vault-chips';
-  
-      const currentCash = getLiquidCash();
   
       // Standard increment chips
       settings.vaultChips.forEach((amount) => {
@@ -694,7 +713,11 @@
       maxChip.onclick = (e) => {
         e.preventDefault();
         const cash = getLiquidCash();
-        if (cash > 0) setInputValue(input, cash);
+        if (cash > 0) {
+          setInputValue(input, cash);
+        } else {
+          setInputValue(input, 0);
+        }
       };
       chipsContainer.appendChild(maxChip);
   
@@ -702,21 +725,17 @@
       const keepChip = document.createElement('span');
       keepChip.className = 'torncore-chip';
       const keepAmount = settings.vaultKeepCash || 20000;
-      chipFormatKeep();
-  
-      function chipFormatKeep() {
-        keepChip.textContent = `Keep ${formatMoney(keepAmount)}`;
-        keepChip.title = `Pre-fill cash minus ${formatMoney(keepAmount)}`;
-        keepChip.onclick = (e) => {
-          e.preventDefault();
-          const cash = getLiquidCash();
-          const depositVal = Math.max(0, cash - keepAmount);
-          setInputValue(input, depositVal);
-        };
-      }
+      keepChip.textContent = `Keep ${formatMoney(keepAmount)}`;
+      keepChip.title = `Pre-fill cash minus ${formatMoney(keepAmount)}`;
+      keepChip.onclick = (e) => {
+        e.preventDefault();
+        const cash = getLiquidCash();
+        const depositVal = Math.max(0, cash - keepAmount);
+        setInputValue(input, depositVal);
+      };
       chipsContainer.appendChild(keepChip);
   
-      // Insert directly before or after input
+      // Insert directly before input or container
       input.parentNode.insertBefore(chipsContainer, input);
     });
   }

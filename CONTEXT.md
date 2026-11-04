@@ -2,16 +2,16 @@
 Part of [[_Brain/00-Master-Orchestrator-MOC|00-Master-Orchestrator-MOC]] · Hub Node: [[_Brain/Projects/Torn|Torn]]
 
 ## 1. Overview & Stack
-- **Project**: Torn Suite (Monorepo Workspace)
+- **Project**: Torn
 - **Workspace**: `/Users/kiwi/Desktop/Developer/Antigravity/Torn`
-- **Sub-Projects**:
-  - `TornCore/`: Vanilla ES2022 Tampermonkey Userscript suite (`dist/TornCore.user.js`)
-  - `TornFlipper/`: Standalone Python / Discord market deal scanner (Handoff in `HANDOFF_TORN_FLIPPER.md`)
+- **Stack**: TypeScript / Web
+- **Summary**: Active workspace in `Antigravity/Torn`.
 - **Connected Guilds**: [[_Brain/Guilds/Guild-1-Frontend-UX|Guild-1-Frontend-UX]] · [[_Brain/Guilds/Guild-3-Engineering-Delivery|Guild-3-Engineering-Delivery]]
 
 ## 2. Project Knowledge Graph
-- 7 linked docs → full index in [[_Brain/Projects/Torn|Torn hub]] (read on demand only)
+- 8 linked docs → full index in [[_Brain/Projects/Torn|Torn hub]] (read on demand only)
 - Code graph: `graphify-out/GRAPH_REPORT.md`
+
 
 ## 3. Working Memory & Recent Milestones
 - 2026-11-04: Completed implementation of all 9 tickets for TornCore QoL Suite. 13 unit tests passing.

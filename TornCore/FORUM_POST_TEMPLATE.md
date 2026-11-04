@@ -63,7 +63,7 @@ Every module can be toggled on or off individually! Look for the floating [b]⚙
 [list=1]
 [*] Install [url=https://www.tampermonkey.net/]Tampermonkey[/url] (Chrome, Firefox, Safari, Edge, or Kiwi Browser).
 [*] Install the script directly:
-[url=https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/dist/TornCore.user.js][b]👉 Click Here to Install TornCore.user.js[/b][/url]
+[url=https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/TornCore/dist/TornCore.user.js][b]👉 Click Here to Install TornCore.user.js[/b][/url]
 [*] Navigate to Torn, open [b]Settings -> API Keys[/b], generate a [b]Public[/b] key, and paste it into TornCore's [b]⚙[/b] settings drawer.
 [/list]
 

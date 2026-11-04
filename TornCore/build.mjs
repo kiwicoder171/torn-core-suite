@@ -15,8 +15,8 @@ const USER_SCRIPT_HEADER = `// ==UserScript==
 // @license      MIT
 // @match        https://*.torn.com/*
 // @match        https://torn.com/*
-// @updateURL    https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/dist/TornCore.user.js
-// @downloadURL  https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/dist/TornCore.user.js
+// @updateURL    https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/TornCore/dist/TornCore.user.js
+// @downloadURL  https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/TornCore/dist/TornCore.user.js
 // @supportURL   https://github.com/kiwicoder171/torn-core-suite/issues
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -101,12 +101,6 @@ ${bundledBody.join('\n').split('\n').map(l => '  ' + l).join('\n')}
   fs.writeFileSync(OUTPUT_FILE, outputContent, 'utf8');
   const stats = fs.statSync(OUTPUT_FILE);
   console.log(`[TornCore Build] Success! Output size: ${(stats.size / 1024).toFixed(2)} KB -> ${OUTPUT_FILE}`);
-
-  // Mirror to root dist/ if present so GitHub raw links from forum posts never break
-  const ROOT_DIST = '../dist';
-  if (fs.existsSync(ROOT_DIST)) {
-    fs.writeFileSync(path.join(ROOT_DIST, 'TornCore.user.js'), outputContent, 'utf8');
-  }
 
   // Also generate Tampermonkey-compatible import JSON
   const JSON_OUTPUT_FILE = path.join(DIST_DIR, 'tampermonkey-backup.json');

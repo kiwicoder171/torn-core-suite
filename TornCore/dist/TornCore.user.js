@@ -7,8 +7,8 @@
 // @license      MIT
 // @match        https://*.torn.com/*
 // @match        https://torn.com/*
-// @updateURL    https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/dist/TornCore.user.js
-// @downloadURL  https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/dist/TornCore.user.js
+// @updateURL    https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/TornCore/dist/TornCore.user.js
+// @downloadURL  https://raw.githubusercontent.com/kiwicoder171/torn-core-suite/main/TornCore/dist/TornCore.user.js
 // @supportURL   https://github.com/kiwicoder171/torn-core-suite/issues
 // @grant        GM_getValue
 // @grant        GM_setValue

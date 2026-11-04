@@ -51,9 +51,8 @@ function bootstrap() {
 
   router.register('travel', (href) => {
     return href.includes('travel') ||
-           !!document.querySelector('input[placeholder*="inventory" i]') ||
-           /Select\s+Destination/i.test(document.body?.textContent || '') ||
-           /Travel\s+Agency/i.test(document.body?.textContent || '');
+           href.includes('index.php') ||
+           !!document.querySelector('.itemRow___, tr[data-item], .item-row');
   }, initTravelSuite);
   router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
   router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);

@@ -27,9 +27,13 @@ class TornFlipperService:
         self.items = items
         self.running = False
 
-        # Subsystems
-        rate_limit = config.get("rate_limit_calls_per_minute", 75)
-        self.rate_limiter = SlidingWindowRateLimiter(max_calls=rate_limit, period_seconds=60.0)
+        # Subsystems: smooth_spacing=True ensures perfectly metered pace without micro-bursts
+        rate_limit = config.get("rate_limit_calls_per_minute", 60)
+        self.rate_limiter = SlidingWindowRateLimiter(
+            max_calls=rate_limit,
+            period_seconds=60.0,
+            smooth_spacing=True,
+        )
         self.api_client = TornApiClient(
             api_key=config.get("api_key", ""),
             rate_limiter=self.rate_limiter,
@@ -49,9 +53,9 @@ class TornFlipperService:
         )
 
         intervals = config.get("poll_intervals", {})
-        self.tier_1_interval = intervals.get("tier_1_seconds", 5.0)
-        self.tier_2_interval = intervals.get("tier_2_seconds", 25.0)
-        self.tier_3_interval = intervals.get("tier_3_seconds", 60.0)
+        self.tier_1_interval = intervals.get("tier_1_seconds", 8.0)
+        self.tier_2_interval = intervals.get("tier_2_seconds", 30.0)
+        self.tier_3_interval = intervals.get("tier_3_seconds", 90.0)
 
     async def scan_item(self, item_config: dict[str, Any]) -> None:
         item_id = item_config["id"]
@@ -71,26 +75,6 @@ class TornFlipperService:
         except Exception as ex:
             logger.error(f"Unexpected error scanning {item_name} (ID {item_id}): {ex}")
 
-    async def _tier_worker(self, tier_name: str, items_list: list[dict[str, Any]], interval: float) -> None:
-        if not items_list:
-            return
-
-        logger.info(f"Starting {tier_name} loop ({len(items_list)} items, interval: {interval}s)")
-        while self.running:
-            start_time = asyncio.get_event_loop().time()
-
-            for item_config in items_list:
-                if not self.running:
-                    break
-                await self.scan_item(item_config)
-
-            elapsed = asyncio.get_event_loop().time() - start_time
-            sleep_time = max(0.5, interval - elapsed)
-            try:
-                await asyncio.sleep(sleep_time)
-            except asyncio.CancelledError:
-                break
-
     async def scan_all_once(self) -> None:
         """Single pass scan through all configured tiers."""
         logger.info("Executing single full market scan pass...")
@@ -105,9 +89,8 @@ class TornFlipperService:
 
     async def start(self) -> None:
         self.running = True
-        logger.info("Initializing TornFlipper Service...")
+        logger.info("Initializing TornFlipper Service (Priority Metronome Mode)...")
 
-        # If a real API key is supplied, attempt verification
         api_key = self.config.get("api_key", "").strip()
         if api_key and api_key != "YOUR_TORN_API_KEY_HERE":
             valid, msg = await self.api_client.verify_key()
@@ -116,18 +99,44 @@ class TornFlipperService:
             else:
                 logger.warning(f"⚠️ API Key check failed: {msg}")
 
-        tier_1_items = self.items.get("tier_1", [])
-        tier_2_items = self.items.get("tier_2", [])
-        tier_3_items = self.items.get("tier_3", [])
+        # Assemble priority schedule queue
+        scheduled_items: list[dict[str, Any]] = []
+        for it in self.items.get("tier_1", []):
+            scheduled_items.append({"config": it, "tier": 1, "interval": self.tier_1_interval, "next_poll": 0.0})
+        for it in self.items.get("tier_2", []):
+            scheduled_items.append({"config": it, "tier": 2, "interval": self.tier_2_interval, "next_poll": 0.0})
+        for it in self.items.get("tier_3", []):
+            scheduled_items.append({"config": it, "tier": 3, "interval": self.tier_3_interval, "next_poll": 0.0})
 
-        tasks = [
-            asyncio.create_task(self._tier_worker("Tier 1", tier_1_items, self.tier_1_interval)),
-            asyncio.create_task(self._tier_worker("Tier 2", tier_2_items, self.tier_2_interval)),
-            asyncio.create_task(self._tier_worker("Tier 3", tier_3_items, self.tier_3_interval)),
-        ]
+        logger.info(
+            f"Scheduler ready: {len(scheduled_items)} total items monitored. "
+            f"Rate Ceiling: {self.rate_limiter.max_calls} calls/min (Spacing: ~{self.rate_limiter.min_spacing:.2f}s/req)"
+        )
 
         try:
-            await asyncio.gather(*tasks)
+            while self.running:
+                now = asyncio.get_event_loop().time()
+                due_items = [it for it in scheduled_items if it["next_poll"] <= now]
+
+                if not due_items:
+                    earliest = min(it["next_poll"] for it in scheduled_items)
+                    sleep_duration = max(0.1, earliest - now)
+                    try:
+                        await asyncio.sleep(sleep_duration)
+                    except asyncio.CancelledError:
+                        break
+                    continue
+
+                # Priority: Tier 1 > Tier 2 > Tier 3, then earliest scheduled
+                due_items.sort(key=lambda x: (x["tier"], x["next_poll"]))
+                target = due_items[0]
+
+                if not self.running:
+                    break
+
+                await self.scan_item(target["config"])
+                target["next_poll"] = asyncio.get_event_loop().time() + target["interval"]
+
         except asyncio.CancelledError:
             pass
         finally:
@@ -157,7 +166,6 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Mock run without network alerts")
     args = parser.parse_args()
 
-    # Determine config and items paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     if os.path.isabs(args.config) or os.path.exists(args.config):
         config_path = args.config
@@ -195,7 +203,6 @@ def main():
         try:
             loop.add_signal_handler(sig, handle_signal)
         except NotImplementedError:
-            # Signal handling on Windows / restricted environments
             pass
 
     try:

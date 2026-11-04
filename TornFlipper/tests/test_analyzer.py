@@ -41,6 +41,7 @@ def test_analyzer_detects_valid_deal(analyzer):
     assert deal.price == 800000
     assert deal.recommended_flip_price == 834999
     assert deal.quantity == 10
+    assert deal.total_cost == 8000000
     assert deal.profit_per_unit == 34999
     assert deal.total_potential_profit == 349990
     assert deal.origin == "bazaar"

@@ -12,6 +12,7 @@ class Deal:
     seller_id: int  # User ID for Bazaar, Listing/Seller ID for Item Market
     price: int
     quantity: int
+    total_cost: int  # Total cash needed to buy all units
     reference_price: int
     recommended_flip_price: int  # Exact price to relist for a fast, profitable flip
     active_median: int
@@ -159,6 +160,7 @@ class MarketAnalyzer:
             recommended_flip_price = max(cost + 1, reference_price - 1)
             profit_per_unit = recommended_flip_price - cost
             total_potential_profit = profit_per_unit * quantity
+            total_cost = cost * quantity
 
             # Check threshold constraints
             if discount_pct < min_discount_pct:
@@ -191,6 +193,7 @@ class MarketAnalyzer:
                 seller_id=seller_id,
                 price=cost,
                 quantity=quantity,
+                total_cost=total_cost,
                 reference_price=reference_price,
                 recommended_flip_price=recommended_flip_price,
                 active_median=active_median,

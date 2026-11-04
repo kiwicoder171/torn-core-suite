@@ -12,6 +12,7 @@ def sample_deal():
         seller_id=12345,
         price=800000,
         quantity=10,
+        total_cost=8000000,
         reference_price=835000,
         recommended_flip_price=834999,
         active_median=835000,

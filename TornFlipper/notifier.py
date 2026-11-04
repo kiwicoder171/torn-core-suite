@@ -72,14 +72,10 @@ class WebhookNotifier:
             {"name": "🎯 Recommended Flip", "value": f"**${deal.recommended_flip_price:,}**", "inline": True},
             {"name": "📊 Reference", "value": f"${deal.reference_price:,} (-{deal.discount_pct}%)", "inline": True},
             {"name": "📦 Quantity", "value": f"**{deal.quantity:,}** units", "inline": True},
-            {
-                "name": "💰 Profit per Unit",
-                "value": f"+${deal.profit_per_unit:,}",
-                "inline": True,
-            },
+            {"name": "💳 Total to Buy All", "value": f"**${deal.total_cost:,}**", "inline": True},
             {
                 "name": "💵 Total Flip Profit",
-                "value": f"**+${deal.total_potential_profit:,}**",
+                "value": f"**+${deal.total_potential_profit:,}** *(+${deal.profit_per_unit:,}/ea)*",
                 "inline": True,
             },
             {
@@ -138,6 +134,7 @@ class WebhookNotifier:
             f"🎯 <b>Recommended Flip:</b> ${deal.recommended_flip_price:,}\n"
             f"📊 <b>Ref Market:</b> ${deal.reference_price:,}\n"
             f"📦 <b>Available:</b> {deal.quantity:,} units\n"
+            f"💳 <b>Total to Buy All:</b> ${deal.total_cost:,}\n"
             f"💰 <b>Total Flip Profit:</b> +${deal.total_potential_profit:,}\n"
             f"🏪 <b>Origin:</b> {deal.origin.capitalize()} (Seller: {deal.seller_id})"
             f"{warning_line}\n\n"

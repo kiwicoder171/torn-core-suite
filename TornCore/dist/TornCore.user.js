@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.2
+// @version      1.0.3
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -853,18 +853,19 @@
   
     if (href.includes('travelagency.php')) {
       renderTravelAgencyProfits();
+      // Re-check after 300ms in case Torn's dynamic SPA is still building DOM
+      setTimeout(renderTravelAgencyProfits, 300);
+      setTimeout(renderTravelAgencyProfits, 800);
     }
   
     if (href.includes('page=travel') || href.includes('index.php')) {
       initOverseasShopHelper();
+      setTimeout(initOverseasShopHelper, 500);
     }
   }
   
   function renderTravelAgencyProfits() {
     if (document.getElementById('torncore-travel-card')) return;
-  
-    const targetContainer = document.querySelector('.travel-agency-container, .content-wrapper, #travel-root');
-    if (!targetContainer) return;
   
     const settings = loadSettings();
     const capacity = settings.travelCarryCapacity || 29;
@@ -912,7 +913,22 @@
       </div>
     `;
   
-    targetContainer.prepend(card);
+    // Search for the "Travel Agency" title element to inject immediately underneath
+    const headings = document.querySelectorAll('.content-title, h4, h3, h2, h1');
+    for (const h of headings) {
+      if (/travel\s*agency/i.test(h.textContent || '')) {
+        h.parentNode.insertBefore(card, h.nextSibling);
+        return;
+      }
+    }
+  
+    // Fallback container selectors
+    const fallbackContainer = document.querySelector(
+      '.travel-agency, [class*="travel" i], .content, #mainContainer, .stage'
+    );
+    if (fallbackContainer) {
+      fallbackContainer.prepend(card);
+    }
   }
   
   function initOverseasShopHelper() {

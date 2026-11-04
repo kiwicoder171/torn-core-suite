@@ -5,7 +5,7 @@
 *Copy and paste the text below directly into a new thread in the **Tools & Userscripts** subforum on Torn.com:*
 
 ```bbcode
-[center][size=5][b][color=#38bdf8]TornCore QoL Suite[/color] [color=#94a3b8]v1.0.0[/color][/b][/size]
+[center][size=5][b][color=#38bdf8]TornCore QoL Suite[/color] [color=#94a3b8]v1.0.2[/color][/b][/size]
 [size=3][i]A clean, modular, 100% rule-compliant Quality-of-Life & calculation suite for Torn.[/i][/size][/center]
 
 [hr]

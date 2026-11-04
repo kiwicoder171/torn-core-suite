@@ -9,7 +9,7 @@ const OUTPUT_FILE = path.join(DIST_DIR, 'TornCore.user.js');
 const USER_SCRIPT_HEADER = `// ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.4
+// @version      1.0.2
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT

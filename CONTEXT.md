@@ -14,4 +14,7 @@ Part of [[_Brain/00-Master-Orchestrator-MOC|00-Master-Orchestrator-MOC]] · Hub 
 
 
 ## 3. Working Memory & Recent Milestones
-- Synchronized with Obsidian Second-Brain Graph (`sync-obsidian-vault`, 2026-11-04).
+- 2026-11-04: Completed implementation of all 9 tickets for TornCore QoL Suite. 13 unit tests passing, zero lint/syntax errors.
+- 2026-11-04: Pushed repository to GitHub (`kiwicoder171/torn-core-suite`), published v1.0.1 with in-modal privacy guarantee.
+- 2026-11-04: Published thread on Torn Forums (*Tools & Userscripts*).
+- 2026-11-05: Formulated architecture and project handoff for standalone companion tool `TornFlipper` in `HANDOFF_TORN_FLIPPER.md`.

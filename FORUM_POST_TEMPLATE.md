@@ -1,3 +1,5 @@
+> 🧠 **Obsidian Hub**: [[_Brain/Projects/Torn|Torn]] · [[Antigravity/Torn/CONTEXT|Torn/CONTEXT.md]]
+
 # Torn Forum Thread Template (BBCode)
 
 *Copy and paste the text below directly into a new thread in the **Tools & Userscripts** subforum on Torn.com:*

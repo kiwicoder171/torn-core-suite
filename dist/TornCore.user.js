@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.0
+// @version      1.0.1
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -557,11 +557,29 @@
       </div>
       <div class="torncore-modal-body">
         <div class="torncore-form-group">
-          <label>Torn API Key (Public/Minimal Access)</label>
+          <label>Torn API Key (Public Access Only)</label>
           <input type="password" id="torncore-api-key" class="torncore-input" value="${settings.apiKey || ''}" placeholder="Enter 16-character Torn API key" />
-          <small style="color:#64748b; font-size:11px; display:block; margin-top:3px;">
-            Stored locally in your browser. Used for safe profile & item checks.
-          </small>
+          
+          <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 11px; color: #cbd5e1; line-height: 1.4;">
+            <div style="display:flex; align-items:center; gap:5px; color:#34d399; font-weight:700; margin-bottom:3px;">
+              <span>🔒</span>
+              <span>Privacy & Security Guarantee</span>
+            </div>
+            <ul style="margin: 0; padding-left: 14px; color: #94a3b8;">
+              <li>Stored <strong>100% locally</strong> in your browser (<code>localStorage</code>).</li>
+              <li><strong>NEVER</strong> sent to any external server, webhook, or database.</li>
+              <li>Requires <strong>Public Access only</strong> (never supply a Full Access key).</li>
+            </ul>
+            <div style="margin-top: 6px; display:flex; gap:10px; font-size: 10px;">
+              <a href="https://github.com/kiwicoder171/torn-core-suite/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">
+                Privacy Policy
+              </a>
+              <span style="color: #475569;">•</span>
+              <a href="https://github.com/kiwicoder171/torn-core-suite/blob/main/COMPLIANCE.md" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">
+                Rule Compliance
+              </a>
+            </div>
+          </div>
         </div>
   
         <div class="torncore-form-group">

@@ -1,3 +1,5 @@
+> 🧠 **Obsidian Hub**: [[_Brain/Projects/Torn|Torn]] · [[Antigravity/Torn/CONTEXT|Torn/CONTEXT.md]]
+
 # Privacy Policy & Security Guarantee
 
 **Last Updated:** November 2026

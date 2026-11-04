@@ -1,3 +1,5 @@
+> 🧠 **Obsidian Hub**: [[_Brain/Projects/Torn|Torn]] · [[Antigravity/Torn/CONTEXT|Torn/CONTEXT.md]]
+
 # Torn Scripting & API Compliance Manifesto
 
 **TornCore QoL Suite** is engineered from the ground up to comply 100% with Torn’s **Automation & Scripting Rules** and the **Torn API Terms of Service** (https://www.torn.com/api.html).

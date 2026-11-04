@@ -1,6 +1,6 @@
 {
   "name": "torn-core-suite",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Unified 100% rule-compliant QoL & calculation userscript suite for Torn.com",
   "type": "module",
   "scripts": {

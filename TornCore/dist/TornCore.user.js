@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.3
+// @version      1.0.4
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -972,24 +972,123 @@
   // --- Module: modules/cityScanner.js ---
   // City Map Item Scanner: Highlights hidden items on torn.com/city.php
   
-  function initCityScanner() {
-    if (!window.location.href.includes('city.php')) return;
+  // Common item ID lookup table for quick display
+  const COMMON_CITY_ITEMS = {
+    '180': 'Small First Aid Pack',
+    '181': 'First Aid Pack',
+    '182': 'Morphine',
+    '258': 'Cesium-137',
+    '366': 'Cannabis',
+    '367': 'Ecstasy',
+    '368': 'Ketamine',
+    '369': 'LSD',
+    '370': 'Opium',
+    '371': 'PCP',
+    '372': 'Shrooms',
+    '373': 'Speed',
+    '374': 'Vicodin',
+    '375': 'Xanax',
+    '384': 'Can of Red Cow',
+    '385': 'Can of Munster',
+    '386': 'Can of Rockstar',
+    '387': 'Can of Taurine Elite',
+    '388': 'Can of X-MASS',
+    '389': 'Can of Santa Shoot',
+    '450': 'Drug Pack',
+    '451': 'Six-pack of Energy Drink',
+    '452': 'Six-pack of Alcohol',
+    '453': 'Lottery Voucher',
+    '454': 'Gift Card',
+    '528': 'Feathery Hotel Coupon',
+  };
   
-    // Give Leaflet map a brief moment to render markers
-    setTimeout(() => scanCityMap(), 500);
+  let scanInterval = null;
+  
+  function initCityScanner() {
+    if (!window.location.href.includes('city.php')) {
+      if (scanInterval) clearInterval(scanInterval);
+      return;
+    }
+  
+    // Periodic rescan on city map to pick up dynamically loaded tiles / removals
+    setTimeout(scanCityMap, 500);
+    setTimeout(scanCityMap, 1500);
+  
+    if (!scanInterval) {
+      scanInterval = setInterval(scanCityMap, 2500);
+    }
+  }
+  
+  function getItemNameFromMarker(marker) {
+    // Check title or alt attributes
+    const title = marker.getAttribute('title') || marker.getAttribute('alt') || marker.getAttribute('data-title');
+    if (title && title.trim()) return title.trim();
+  
+    // Check parent title
+    const parentTitle = marker.parentElement?.getAttribute('title');
+    if (parentTitle && parentTitle.trim()) return parentTitle.trim();
+  
+    // Extract from image src: .../items/<id>/large.png
+    const src = marker.getAttribute('src') || '';
+    const match = src.match(/\/items\/(\d+)\//);
+    if (match && match[1]) {
+      const id = match[1];
+      if (COMMON_CITY_ITEMS[id]) return COMMON_CITY_ITEMS[id];
+      return `Item (#${id})`;
+    }
+  
+    return 'Collectible Item';
   }
   
   function scanCityMap() {
-    // Torn city map markers are rendered inside Leaflet marker panes
+    if (!window.location.href.includes('city.php')) return;
+  
     const markerPane = document.querySelector('.leaflet-marker-pane, #map');
     if (!markerPane) return;
   
-    // Filter for item icons (Torn item icons usually have item IDs or images in /images/items/)
-    const itemMarkers = markerPane.querySelectorAll('img[src*="/items/"], .leaflet-marker-icon[src*="items"], [data-item-id]');
-    
-    if (itemMarkers.length === 0) return;
+    // Filter for collectible items on the map
+    const rawMarkers = markerPane.querySelectorAll(
+      'img[src*="/items/"], .leaflet-marker-icon[src*="items"], [data-item-id]'
+    );
   
-    // Check if summary card already exists
+    // If no items remain on the map, remove the summary card immediately
+    if (!rawMarkers || rawMarkers.length === 0) {
+      const existingCard = document.getElementById('torncore-city-items-card');
+      if (existingCard) existingCard.remove();
+      return;
+    }
+  
+    const itemsFound = [];
+  
+    rawMarkers.forEach((marker) => {
+      // Force marker visibility & elevation above standard map tiles
+      marker.style.outline = '3px solid #10b981';
+      marker.style.borderRadius = '50%';
+      marker.style.boxShadow = '0 0 16px #10b981, inset 0 0 6px #10b981';
+      marker.style.zIndex = '99999';
+      marker.style.opacity = '1';
+      marker.style.visibility = 'visible';
+  
+      // Hook click listener to auto-refresh after item is collected
+      if (!marker.dataset.torncoreHooked) {
+        marker.dataset.torncoreHooked = 'true';
+        marker.addEventListener('click', () => {
+          setTimeout(scanCityMap, 600);
+          setTimeout(scanCityMap, 1500);
+        });
+      }
+  
+      const name = getItemNameFromMarker(marker);
+      itemsFound.push({ name, element: marker });
+    });
+  
+    if (itemsFound.length === 0) {
+      const existingCard = document.getElementById('torncore-city-items-card');
+      if (existingCard) existingCard.remove();
+      return;
+    }
+  
+    // Create or update card
     let card = document.getElementById('torncore-city-items-card');
     if (!card) {
       card = document.createElement('div');
@@ -998,29 +1097,16 @@
       card.style.position = 'relative';
       card.style.zIndex = '1000';
   
-      const cityContainer = document.querySelector('.content-wrapper, #city-root, .city-box');
+      const cityContainer = document.querySelector('.content-wrapper, #city-root, .city-box, .content');
       if (cityContainer) {
         cityContainer.prepend(card);
       }
     }
   
-    const itemsFound = [];
-  
-    itemMarkers.forEach((marker, idx) => {
-      // Add pulsing glow around map item
-      marker.style.outline = '3px solid #10b981';
-      marker.style.borderRadius = '50%';
-      marker.style.boxShadow = '0 0 14px #10b981, inset 0 0 8px #10b981';
-      marker.style.filter = 'drop-shadow(0 0 6px #34d399)';
-  
-      const itemName = marker.getAttribute('title') || marker.getAttribute('alt') || `Item #${idx + 1}`;
-      itemsFound.push({ name: itemName, element: marker });
-    });
-  
     card.innerHTML = `
       <div class="torncore-card-header">
         <span style="color:#34d399;">📍 Hidden City Items Found (${itemsFound.length})</span>
-        <span style="font-size:10px; color:#94a3b8;">Click an item to highlight on map</span>
+        <span style="font-size:10px; color:#94a3b8;">Click item to pan map directly to it</span>
       </div>
       <div class="torncore-chip-container">
         ${itemsFound
@@ -1035,7 +1121,7 @@
       </div>
     `;
   
-    // Add click to focus on map marker
+    // Pan smoothly and pulse marker when chip is clicked
     card.querySelectorAll('.torncore-chip').forEach((chip) => {
       chip.onclick = () => {
         const idx = parseInt(chip.getAttribute('data-index'), 10);
@@ -1043,10 +1129,10 @@
         if (target) {
           target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
           target.style.transition = 'transform 0.3s ease';
-          target.style.transform = 'scale(1.8)';
+          target.style.transform = 'scale(2.2)';
           setTimeout(() => {
             target.style.transform = 'scale(1)';
-          }, 800);
+          }, 1000);
         }
       };
     });
@@ -1254,7 +1340,8 @@
   }
   
   // --- Module: modules/gymTimer.js ---
-  // Gym Happy Reset Countdown Timer (:00, :15, :30, :45 TCT ticks)
+  // Global Happy 15-Minute Reset Countdown (:00, :15, :30, :45 TCT ticks)
+  // Injects directly beside the Happy bar in the sidebar on EVERY page, plus detailed card on gym.php
   
   let timerInterval = null;
   
@@ -1280,7 +1367,7 @@
   }
   
   function getHappyStats() {
-    const happyBar = document.querySelector('#barHappy, [data-happy], .bar-happy');
+    const happyBar = document.querySelector('#barHappy, [data-happy], .bar-happy, [class*="bar-happy"]');
     if (happyBar) {
       const text = happyBar.textContent || '';
       const match = text.match(/([0-9,]+)\s*\/\s*([0-9,]+)/);
@@ -1294,22 +1381,49 @@
   }
   
   function initGymTimer() {
-    if (!window.location.href.includes('gym.php')) {
-      if (timerInterval) clearInterval(timerInterval);
-      return;
+    // Run on all pages: inject into sidebar Happy row
+    renderSidebarHappyPill();
+  
+    // If on gym page, also render full detailed card
+    if (window.location.href.includes('gym.php')) {
+      renderGymTimerCard();
     }
   
-    renderGymTimer();
-  
     if (!timerInterval) {
-      timerInterval = setInterval(updateTimerDisplay, 1000);
+      timerInterval = setInterval(updateAllHappyDisplays, 1000);
     }
   }
   
-  function renderGymTimer() {
+  function renderSidebarHappyPill() {
+    const happyRow = document.querySelector('#barHappy, .bar-happy, [class*="happyRow"], [class*="bar-happy"]')?.closest('li, div, [class*="row"]');
+    if (!happyRow) return;
+  
+    if (document.getElementById('torncore-happy-sidebar-pill')) return;
+  
+    const pill = document.createElement('span');
+    pill.id = 'torncore-happy-sidebar-pill';
+    pill.style.cssText = `
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+      margin-left: 6px;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: all 0.2s ease;
+    `;
+    pill.title = 'Countdown to next :00, :15, :30, :45 TCT server tick (Surplus Happy decays at tick)';
+  
+    happyRow.appendChild(pill);
+    updateAllHappyDisplays();
+  }
+  
+  function renderGymTimerCard() {
     if (document.getElementById('torncore-gym-timer-card')) return;
   
-    const gymContainer = document.querySelector('.gymContent___, .content-wrapper, #gymroot');
+    const gymContainer = document.querySelector('.gymContent___, .content-wrapper, #gymroot, .content');
     if (!gymContainer) return;
   
     const card = document.createElement('div');
@@ -1317,45 +1431,68 @@
     card.className = 'torncore-card';
     gymContainer.prepend(card);
   
-    updateTimerDisplay();
+    updateAllHappyDisplays();
   }
   
-  function updateTimerDisplay() {
-    const card = document.getElementById('torncore-gym-timer-card');
-    if (!card) return;
-  
+  function updateAllHappyDisplays() {
     const happy = getHappyStats();
     const secLeft = getNextHappyTickSeconds();
     const timeFormatted = formatTimeRemaining(secLeft);
-  
     const isUrgent = secLeft <= 120; // 2 minutes or less
   
-    let statusHtml = '';
-    if (happy.isOvercapped) {
-      statusHtml = `
-        <div style="background: ${isUrgent ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.2)'}; border: 1px solid ${isUrgent ? '#ef4444' : '#f59e0b'}; padding: 6px 10px; border-radius: 4px; margin-top: 6px;">
-          <span style="color: ${isUrgent ? '#f87171' : '#fbbf24'}; font-weight:700;">
-            ${isUrgent ? '🚨 CRITICAL: ' : '⚠️ '}HAPPY JUMP ACTIVE (${happy.current.toLocaleString()} / ${happy.max.toLocaleString()} Happy)
-          </span>
-          <div style="font-size:11px; color:#cbd5e1; margin-top:2px;">
-            Surplus Happy will decay to natural max at the tick! Train your energy now.
-          </div>
-        </div>
-      `;
+    // 1. Update Sidebar Happy Pill (On every page!)
+    let pill = document.getElementById('torncore-happy-sidebar-pill');
+    if (!pill) {
+      renderSidebarHappyPill();
+      pill = document.getElementById('torncore-happy-sidebar-pill');
     }
   
-    card.innerHTML = `
-      <div class="torncore-card-header">
-        <span style="color:#fbbf24;">⏱ 15-Minute Happy Tick Clock</span>
-        <span style="font-size:14px; font-weight:700; color:${isUrgent ? '#ef4444' : '#38bdf8'}; font-family:monospace;">
-          ${timeFormatted}
-        </span>
-      </div>
-      <div style="font-size:11px; color:#94a3b8;">
-        Server ticks every :00, :15, :30, and :45 TCT past the hour.
-      </div>
-      ${statusHtml}
-    `;
+    if (pill) {
+      if (happy.isOvercapped) {
+        // High alert mode during Happy Jumps!
+        pill.style.background = isUrgent ? '#ef4444' : '#f59e0b';
+        pill.style.color = '#ffffff';
+        pill.style.boxShadow = isUrgent ? '0 0 8px #ef4444' : '0 0 5px #f59e0b';
+        pill.textContent = `🚨 ${timeFormatted}`;
+      } else {
+        // Normal subtle mode
+        pill.style.background = 'rgba(30, 41, 59, 0.85)';
+        pill.style.color = '#38bdf8';
+        pill.style.border = '1px solid rgba(56, 189, 248, 0.3)';
+        pill.textContent = `⏱ ${timeFormatted}`;
+      }
+    }
+  
+    // 2. Update Gym Card (if present on gym.php)
+    const card = document.getElementById('torncore-gym-timer-card');
+    if (card) {
+      let statusHtml = '';
+      if (happy.isOvercapped) {
+        statusHtml = `
+          <div style="background: ${isUrgent ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.2)'}; border: 1px solid ${isUrgent ? '#ef4444' : '#f59e0b'}; padding: 6px 10px; border-radius: 4px; margin-top: 6px;">
+            <span style="color: ${isUrgent ? '#f87171' : '#fbbf24'}; font-weight:700;">
+              ${isUrgent ? '🚨 CRITICAL: ' : '⚠️ '}HAPPY JUMP ACTIVE (${happy.current.toLocaleString()} / ${happy.max.toLocaleString()} Happy)
+            </span>
+            <div style="font-size:11px; color:#cbd5e1; margin-top:2px;">
+              Surplus Happy will decay to natural max at the tick! Train your energy now.
+            </div>
+          </div>
+        `;
+      }
+  
+      card.innerHTML = `
+        <div class="torncore-card-header">
+          <span style="color:#fbbf24;">⏱ 15-Minute Happy Tick Clock</span>
+          <span style="font-size:14px; font-weight:700; color:${isUrgent ? '#ef4444' : '#38bdf8'}; font-family:monospace;">
+            ${timeFormatted}
+          </span>
+        </div>
+        <div style="font-size:11px; color:#94a3b8;">
+          Server ticks every :00, :15, :30, and :45 TCT past the hour.
+        </div>
+        ${statusHtml}
+      `;
+    }
   }
   
   // --- Entrypoint: main.js ---
@@ -1372,6 +1509,7 @@
   
     // Register Global Modules
     router.register('bazaarGuard', () => true, checkBazaarExposure);
+    router.register('gymTimer', () => true, initGymTimer);
   
     // Register Page Specific Modules
     router.register('vault', (href) => href.includes('properties.php') || href.includes('factions.php'), initVaultHelper);
@@ -1379,7 +1517,6 @@
     router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
     router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);
     router.register('hospital', (href) => href.includes('hospitalview.php') || href.includes('item.php'), initHospitalOptimizer);
-    router.register('gymTimer', (href) => href.includes('gym.php'), initGymTimer);
   
     // Start watching URL changes and dynamic DOM mutations
     router.start();

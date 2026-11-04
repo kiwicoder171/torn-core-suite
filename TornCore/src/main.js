@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornCore QoL Suite
 // @namespace    https://github.com/kiwicoder171/torn-core-suite
-// @version      1.0.3
+// @version      1.0.4
 // @description  Unified, 100% rule-compliant Quality-of-Life & calculation suite for Torn.com
 // @author       Kiwi
 // @license      MIT
@@ -39,6 +39,7 @@ function bootstrap() {
 
   // Register Global Modules
   router.register('bazaarGuard', () => true, checkBazaarExposure);
+  router.register('gymTimer', () => true, initGymTimer);
 
   // Register Page Specific Modules
   router.register('vault', (href) => href.includes('properties.php') || href.includes('factions.php'), initVaultHelper);
@@ -46,7 +47,6 @@ function bootstrap() {
   router.register('cityScanner', (href) => href.includes('city.php'), initCityScanner);
   router.register('crimes', (href) => href.includes('loader.php?sid=crimes'), initCrimesHelper);
   router.register('hospital', (href) => href.includes('hospitalview.php') || href.includes('item.php'), initHospitalOptimizer);
-  router.register('gymTimer', (href) => href.includes('gym.php'), initGymTimer);
 
   // Start watching URL changes and dynamic DOM mutations
   router.start();

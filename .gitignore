@@ -9,3 +9,16 @@ __pycache__/
 .pytest_cache/
 
 config.json
+.env
+.venv/
+
+# Separate standalone projects & workspace-local artifacts (not part of torn-core-suite)
+TornQuestBot/
+TornTravel/
+TornCasino/
+tornops/
+archive/
+.agents/
+graphify-out/
+TORN_ECOSYSTEM_ASSESSMENT_REPORT.md
+Torn_Ecosystem_Tools_Guide.pdf
